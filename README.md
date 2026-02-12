@@ -38,5 +38,5 @@ Built with a specialized **Cybersecurity Theme** GUI, it combines real-time hard
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/yourusername/aegis-detector.git](https://github.com/yourusername/aegis-detector.git)
+git clone [https://github.com/sasirudh/Final-year)
 cd aegis-detector

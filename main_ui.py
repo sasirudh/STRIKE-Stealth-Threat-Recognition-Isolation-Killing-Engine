@@ -77,7 +77,7 @@ class MalwareDetectorUI:
     
     def __init__(self, root):
         self.root = root
-        self.root.title("AEGIS - Advanced Threat Detection System")
+        self.root.title("STRIKE | Stealth Threat Recognition, Isolation, & Killing Engine")
         self.root.geometry("1400x900")
         self.root.configure(bg=CyberTheme.BG_DARK)
         
@@ -224,13 +224,13 @@ class MalwareDetectorUI:
         logo_frame = Frame(nav_content, bg=CyberTheme.BG_PANEL)
         logo_frame.pack(side=LEFT, padx=20)
         
-        title_label = Label(logo_frame, text="⬢ AEGIS", 
+        title_label = Label(logo_frame, text="⬢ STRIKE", 
                            bg=CyberTheme.BG_PANEL, 
                            fg=CyberTheme.ACCENT_CYAN, 
                            font=("Segoe UI", 20, "bold"))
         title_label.pack(side=LEFT, pady=15)
         
-        subtitle = Label(logo_frame, text="THREAT DETECTION SYSTEM", 
+        subtitle = Label(logo_frame, text="STEALTH RECOGNITION & ELIMINATION", 
                         bg=CyberTheme.BG_PANEL, 
                         fg=CyberTheme.TEXT_DIM, 
                         font=("Consolas", 8))
@@ -265,8 +265,15 @@ class MalwareDetectorUI:
                                       fg=CyberTheme.TEXT_DIM, 
                                       font=("Arial", 20))
         self.status_indicator.pack(side=LEFT, padx=5)
+
+        # Add this to status_frame in create_navigation
+        self.scan_line = Label(status_frame, text="", 
+                            bg=CyberTheme.BG_PANEL, 
+                            fg=CyberTheme.ACCENT_CYAN, 
+                            font=("Consolas", 8, "italic"))
+        self.scan_line.pack(side=LEFT, padx=10)
         
-        self.status_text = Label(status_frame, text="OFFLINE", 
+        self.status_text = Label(status_frame, text="ENGINE OFFLINE", 
                                 bg=CyberTheme.BG_PANEL, 
                                 fg=CyberTheme.TEXT_DIM, 
                                 font=("Consolas", 10, "bold"))
@@ -282,7 +289,7 @@ class MalwareDetectorUI:
                                                    state=DISABLED)
         self.stop_btn.pack(side=RIGHT, padx=3)
         
-        self.start_btn = self.create_control_button(controls, "▶ START SYSTEM", 
+        self.start_btn = self.create_control_button(controls, "▶ ENGAGE SYSTEM", 
                                                     self.start_smart_monitoring,
                                                     CyberTheme.ACCENT_GREEN)
         self.start_btn.pack(side=RIGHT, padx=3)

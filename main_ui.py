@@ -1,6 +1,25 @@
 """
-Multi-page GUI for Three-Layer Malware Detector.
-CYBERSECURITY PROFESSIONAL THEME - Dark Mode with Neon Accents
+------------------------------------------------------------------------------
+ Project: Detection and elimination of stealthy malware variants using deep learning algorithms 
+ File : Main_ui
+ Author:  Sasirudh Ponneri Balaji & Sairahul S
+ Date:    February 2026
+ 
+ Copyright (c) 2026 Sasirudh Ponneri Balaji. All rights reserved.
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ This code is proprietary and confidential. Unauthorized copying of this file,
+ via any medium, is strictly prohibited.
+------------------------------------------------------------------------------
 """
 
 import os
@@ -51,7 +70,7 @@ class CyberTheme:
     BORDER_GLOW = '#00d9ff'
 
 # Configuration
-SIM_FILE_PATH = r"C:\Users\sasir\OneDrive\Documents\Project\demo\modified\Malware_Sim\Hybrid_malware.csv"
+SIM_FILE_PATH = r"C:\Users\sasir\OneDrive\Documents\Project\Final-year\Malware_Sim\Hybrid_malware.csv"
 
 class MalwareDetectorUI:
     """Cybersecurity Professional GUI"""

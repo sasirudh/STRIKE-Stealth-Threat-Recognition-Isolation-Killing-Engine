@@ -7,6 +7,7 @@ import psutil
 import pandas as pd
 from collections import deque
 from dynamic_module import MalwareModel
+from resource_manager import get_resource_path
 
 class ManualScaler:
     def transform(self, X):
@@ -44,7 +45,7 @@ class DynamicLayer:
         try:
             self.model = MalwareModel(input_size=16, model_type='GRU')
             # Keeping your specific path as requested
-            weight_path = r'C:\Users\sasir\OneDrive\Documents\Project\demo\modified\malware_lstm_weights.pth'
+            weight_path = get_resource_path("models/malware_lstm_weights.pth")
             try:
                 state_dict = torch.load(weight_path, map_location=self.device)
                 self.model.load_state_dict(state_dict)
@@ -56,6 +57,44 @@ class DynamicLayer:
         except Exception as e:
             print(f"[Dynamic Layer] Error: {e}")
             self.use_ml = False
+
+    def _generate_target_resource(self):
+        """Generate a random target resource for deep system monitoring display"""
+        import random
+        
+        resources = [
+            # Registry keys
+            "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+            "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce",
+            "HKLM\\System\\CurrentControlSet\\Services",
+            "HKCU\\Software\\Classes\\exefile\\shell\\open\\command",
+            
+            # File paths
+            "C:\\Windows\\System32\\lsass.exe",
+            "C:\\Windows\\System32\\svchost.exe",
+            "C:\\Users\\Public\\Documents\\temp.exe",
+            "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+            
+            # Network addresses
+            "192.168.1.100:443",
+            "10.0.0.1:8080",
+            "malicious-domain.com:80",
+            "command-control-server.net:8443",
+            
+            # Process names
+            "lsass.exe",
+            "svchost.exe",
+            "explorer.exe",
+            "rundll32.exe",
+            
+            # Memory regions
+            "0x00007FF8A5B20000",
+            "0x00007FF8A5B30000",
+            "kernel32.dll+0x1A5B2",
+            "ntdll.dll+0x3C100"
+        ]
+        
+        return random.choice(resources)
 
     def inject_single_row(self, row_data, pid, category):
         """
@@ -72,9 +111,11 @@ class DynamicLayer:
             
             status = "MALICIOUS" if risk > 0.75 else "Safe"
             
+            target_resource = self._generate_target_resource()
+            
             record = {
                 "pid": str(pid),
-                "name": str(category),
+                "name": target_resource,
                 "risk_score": float(risk),
                 "score": float(risk), # <--- FIXED: Added 'score' key for Dashboard
                 "status": status
@@ -88,7 +129,7 @@ class DynamicLayer:
             return {
                 'score': float(risk),
                 'status': status,
-                'name': str(category)
+                'name': target_resource
             }
             
         except Exception as e:

@@ -34,6 +34,7 @@ import matplotlib
 matplotlib.use("TkAgg") 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+from resource_manager import get_resource_path
 
 # Import backend modules
 from backend_manager import BackendManager
@@ -70,7 +71,7 @@ class CyberTheme:
     BORDER_GLOW = '#00d9ff'
 
 # Configuration
-SIM_FILE_PATH = r"C:\Users\sasir\OneDrive\Documents\Project\Final-year\Malware_Sim\Hybrid_malware.csv"
+SIM_FILE_PATH = get_resource_path("data/Hybrid_malware.csv") # Your simulated CSV file path
 
 class MalwareDetectorUI:
     """Cybersecurity Professional GUI"""
@@ -96,6 +97,9 @@ class MalwareDetectorUI:
         self.monitoring_active = False
         self.update_job = None
         self.status_blink = False
+        
+        # Detection mode
+        self.detection_mode = StringVar(value="hybrid") # Default to Hybrid mode
         
         # Create main layout
         self.create_navigation()
@@ -743,7 +747,7 @@ class MalwareDetectorUI:
                                      style="Cyber.Treeview")
         
         self.tree_csv.heading("pid", text="PID")
-        self.tree_csv.heading("name", text="MALWARE FAMILY")
+        self.tree_csv.heading("name", text="TARGET RESOURCE")
         self.tree_csv.heading("risk", text="RISK SCORE")
         self.tree_csv.heading("status", text="STATUS")
         
@@ -767,6 +771,7 @@ class MalwareDetectorUI:
                                     background=CyberTheme.BG_CARD)
         
         return page 
+    
     
     # ==================== NETWORK PAGE ====================
     def create_network_page(self):
@@ -1006,6 +1011,61 @@ class MalwareDetectorUI:
         status_text.insert("1.0", "\n".join(status_lines))
         status_text.config(state=DISABLED)
         
+        # Detection Mode Panel
+        mode_panel = self.create_panel(content, "◇ DETECTION MODE")
+        mode_panel.pack(fill=X, pady=(0, 15))
+        
+        mode_frame = Frame(mode_panel, bg=CyberTheme.BG_CARD)
+        mode_frame.pack(fill=X, padx=15, pady=15)
+        
+        # Mode description
+        mode_desc = Label(mode_frame, 
+                         text="Choose detection mode:",
+                         bg=CyberTheme.BG_CARD,
+                         fg=CyberTheme.TEXT_SECONDARY,
+                         font=("Consolas", 10))
+        mode_desc.pack(anchor=W, pady=(0, 10))
+        
+        # Mode toggle frame
+        toggle_frame = Frame(mode_frame, bg=CyberTheme.BG_CARD)
+        toggle_frame.pack(fill=X, pady=(0, 10))
+        
+        # Hybrid mode option
+        self.hybrid_radio = Radiobutton(toggle_frame,
+                                       text="Hybrid (CSV + Real-Time)",
+                                       variable=self.detection_mode,
+                                       value="hybrid",
+                                       bg=CyberTheme.BG_CARD,
+                                       fg=CyberTheme.TEXT_PRIMARY,
+                                       selectcolor=CyberTheme.BG_PANEL,
+                                       activebackground=CyberTheme.BG_CARD,
+                                       activeforeground=CyberTheme.ACCENT_CYAN,
+                                       font=("Consolas", 10),
+                                       command=self.update_detection_mode)
+        self.hybrid_radio.pack(anchor=W, pady=2)
+        
+        # Real-time mode option
+        self.realtime_radio = Radiobutton(toggle_frame,
+                                         text="Real-Time (System Only)",
+                                         variable=self.detection_mode,
+                                         value="realtime",
+                                         bg=CyberTheme.BG_CARD,
+                                         fg=CyberTheme.TEXT_PRIMARY,
+                                         selectcolor=CyberTheme.BG_PANEL,
+                                         activebackground=CyberTheme.BG_CARD,
+                                         activeforeground=CyberTheme.ACCENT_CYAN,
+                                         font=("Consolas", 10),
+                                         command=self.update_detection_mode)
+        self.realtime_radio.pack(anchor=W, pady=2)
+        
+        # Mode status indicator
+        self.mode_status_label = Label(mode_frame,
+                                      text="Current Mode: Hybrid (CSV + Real-Time)",
+                                      bg=CyberTheme.BG_CARD,
+                                      fg=CyberTheme.ACCENT_PURPLE,
+                                      font=("Consolas", 9, "bold"))
+        self.mode_status_label.pack(anchor=W, pady=(10, 0))
+        
         # Training Panel
         train_panel = self.create_panel(content, "⬢ MODEL TRAINING")
         train_panel.pack(fill=X, pady=(0, 15))
@@ -1041,9 +1101,21 @@ class MalwareDetectorUI:
         
         return page
     
+    def update_detection_mode(self):
+        """Update detection mode based on user selection"""
+        mode = self.detection_mode.get()
+        if mode == "hybrid":
+            self.mode_status_label.config(text="Current Mode: Hybrid (CSV + Real-Time)", 
+                                        fg=CyberTheme.ACCENT_PURPLE)
+            self.log_message(f"[MODE] Switched to Hybrid Detection Mode")
+        else:  # realtime
+            self.mode_status_label.config(text="Current Mode: Real-Time (System Only)", 
+                                        fg=CyberTheme.ACCENT_GREEN)
+            self.log_message(f"[MODE] Switched to Real-Time Detection Mode")
+    
     # ==================== MONITORING CONTROL ====================
     def start_smart_monitoring(self):
-        """Start real-time monitoring with optional simulation"""
+        """Start monitoring based on selected detection mode"""
         self.backend.start_monitoring()
         self.monitoring_active = True
         
@@ -1053,13 +1125,18 @@ class MalwareDetectorUI:
         self.status_indicator.config(fg=CyberTheme.ACCENT_GREEN)
         self.status_text.config(text="ONLINE", fg=CyberTheme.ACCENT_GREEN)
         
-        # Check for CSV simulation
-        if os.path.exists(SIM_FILE_PATH):
+        # Start monitoring based on detection mode
+        mode = self.detection_mode.get()
+        if mode == "hybrid" and os.path.exists(SIM_FILE_PATH):
             self.status_label.config(text="Status: Hybrid Mode (Live + Capture)", 
                                     fg=CyberTheme.ACCENT_PURPLE)
-            self.log_message(f"[HYBRID] Found Capture. Starting Packet-Data Stream injection...")
+            self.log_message(f"[HYBRID] Starting Hybrid Detection with CSV injection...")
             self.run_simulation_thread(SIM_FILE_PATH)
-        else:
+        elif mode == "hybrid" and not os.path.exists(SIM_FILE_PATH):
+            self.status_label.config(text="Status: Hybrid Mode (Live Only - No CSV)", 
+                                    fg=CyberTheme.ACCENT_YELLOW)
+            self.log_message(f"[HYBRID] CSV file not found. Running Live monitoring only.")
+        else:  # realtime mode
             self.status_label.config(text="Status: Real-Time Monitoring", 
                                     fg=CyberTheme.ACCENT_GREEN)
             self.log_message("[LIVE] Real-time hardware monitoring active.")

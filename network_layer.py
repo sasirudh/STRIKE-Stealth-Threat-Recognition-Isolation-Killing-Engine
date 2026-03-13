@@ -8,6 +8,7 @@ import numpy as np
 import onnxruntime as rt
 import random
 from collections import defaultdict, deque
+from resource_manager import get_resource_path
 
 class NetworkLayer:
     def __init__(self, poll_interval: float = 1.0):
@@ -28,7 +29,7 @@ class NetworkLayer:
         # ML Setup
         self.ml_session = None
         self.use_ml = False
-        self.model_path = "stealthy_malware_pipeline.onnx"
+        self.model_path = get_resource_path("models/stealthy_malware_pipeline.onnx") # Your ONNX model path
         self._try_load_ml_model()
 
         # Features required by ONNX model

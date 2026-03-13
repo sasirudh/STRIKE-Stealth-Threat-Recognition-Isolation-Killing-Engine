@@ -2,6 +2,8 @@
 import os
 import joblib
 import numpy as np
+from resource_manager import get_resource_path
+
 # ==============================================================================
 # FULL NumPy legacy compatibility patch for EMBER + scikit-learn
 # (Required for NumPy >= 1.24, Python 3.13)
@@ -58,7 +60,7 @@ for err in legacy_errors:
         setattr(lief, err, NewLiefError)
 
 
-MODEL_PATH = "C:/Users/sasir/OneDrive/Documents/Project/demo/modified/ember_model.txt" # Ember models are typically saved as .txt or .joblib
+MODEL_PATH = get_resource_path("models/ember_model.txt")
 
 def is_pe_file(file_path: str) -> bool:
     """

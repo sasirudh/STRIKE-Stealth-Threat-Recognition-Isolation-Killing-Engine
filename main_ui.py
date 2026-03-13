@@ -1032,7 +1032,7 @@ class MalwareDetectorUI:
         
         # Hybrid mode option
         self.hybrid_radio = Radiobutton(toggle_frame,
-                                       text="Hybrid (CSV + Real-Time)",
+                                       text="Refresh Datapipeline",
                                        variable=self.detection_mode,
                                        value="hybrid",
                                        bg=CyberTheme.BG_CARD,
@@ -1046,7 +1046,7 @@ class MalwareDetectorUI:
         
         # Real-time mode option
         self.realtime_radio = Radiobutton(toggle_frame,
-                                         text="Real-Time (System Only)",
+                                         text="Refresh Only (Real-Time System Stats)",
                                          variable=self.detection_mode,
                                          value="realtime",
                                          bg=CyberTheme.BG_CARD,
@@ -1060,7 +1060,7 @@ class MalwareDetectorUI:
         
         # Mode status indicator
         self.mode_status_label = Label(mode_frame,
-                                      text="Current Mode: Hybrid (CSV + Real-Time)",
+                                      text="Current Mode: Hybrid ",
                                       bg=CyberTheme.BG_CARD,
                                       fg=CyberTheme.ACCENT_PURPLE,
                                       font=("Consolas", 9, "bold"))
@@ -1105,11 +1105,11 @@ class MalwareDetectorUI:
         """Update detection mode based on user selection"""
         mode = self.detection_mode.get()
         if mode == "hybrid":
-            self.mode_status_label.config(text="Current Mode: Hybrid (CSV + Real-Time)", 
+            self.mode_status_label.config(text="Current Mode: Hybrid ", 
                                         fg=CyberTheme.ACCENT_PURPLE)
             self.log_message(f"[MODE] Switched to Hybrid Detection Mode")
         else:  # realtime
-            self.mode_status_label.config(text="Current Mode: Real-Time (System Only)", 
+            self.mode_status_label.config(text="Current Mode:  SAFE Real-Time ", 
                                         fg=CyberTheme.ACCENT_GREEN)
             self.log_message(f"[MODE] Switched to Real-Time Detection Mode")
     

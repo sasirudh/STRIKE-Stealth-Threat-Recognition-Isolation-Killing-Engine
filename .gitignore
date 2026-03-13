@@ -1,0 +1,20 @@
+# --- PyInstaller / Build Artifacts ---
+build/
+dist/
+*.spec
+
+
+# --- Python temporary files ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+venv/
+.venv/
+env/
+
+# --- IDE specific ---
+.vscode/
+.idea/
+

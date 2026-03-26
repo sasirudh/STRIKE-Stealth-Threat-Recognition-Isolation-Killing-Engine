@@ -163,52 +163,6 @@ class MalwareDetectorUI:
                        borderwidth=0,
                        arrowcolor=CyberTheme.ACCENT_CYAN)
 
-    # def setup_custom_styles(self):
-    #     """Configure custom ttk styles for cyber theme"""
-    #     style = ttk.Style()
-    #     style.theme_use('clam')
-        
-    #     # Treeview Style
-    #     style.configure("Cyber.Treeview",
-    #                    background=CyberTheme.BG_CARD,
-    #                    foreground=CyberTheme.TEXT_PRIMARY,
-    #                    fieldbackground=CyberTheme.BG_CARD,
-    #                    borderwidth=0,
-    #                    font=('Consolas', 9))
-    #     style.configure("Cyber.Treeview.Heading",
-    #                    background=CyberTheme.BG_PANEL,
-    #                    foreground=CyberTheme.ACCENT_CYAN,
-    #                    borderwidth=1,
-    #                    relief='flat',
-    #                    font=('Segoe UI', 9, 'bold'))
-    #     style.map('Cyber.Treeview',
-    #              background=[('selected', CyberTheme.BG_HOVER)])
-        
-    #     # Notebook Style
-    #     style.configure("Cyber.TNotebook",
-    #                    background=CyberTheme.BG_PANEL,
-    #                    borderwidth=0)
-    #     style.configure("Cyber.TNotebook.Tab",
-    #                    background=CyberTheme.BG_CARD,
-    #                    foreground=CyberTheme.TEXT_SECONDARY,
-    #                    padding=[20, 10],
-    #                    borderwidth=0,
-    #                    font=('Segoe UI', 10))
-    #     style.map("Cyber.TNotebook.Tab",
-    #              background=[('selected', CyberTheme.BG_PANEL)],
-    #              foreground=[('selected', CyberTheme.ACCENT_CYAN)])
-        
-    #     # Scrollbar Style
-    #     style.configure("Cyber.Vertical.TScrollbar",
-    #                    background=CyberTheme.BG_CARD,
-    #                    troughcolor=CyberTheme.BG_PANEL,
-    #                    borderwidth=0,
-    #                    arrowcolor=CyberTheme.ACCENT_CYAN)
-    #     style.configure("Cyber.Horizontal.TScrollbar",
-    #                    background=CyberTheme.BG_CARD,
-    #                    troughcolor=CyberTheme.BG_PANEL,
-    #                    borderwidth=0,
-    #                    arrowcolor=CyberTheme.ACCENT_CYAN)
     
     def create_navigation(self):
         """Create cyberpunk-style navigation bar"""
@@ -977,10 +931,12 @@ class MalwareDetectorUI:
         
         return page
     
-    # ====================Disinfect System (Placeholder)====================
+
+    # ====================Disinfect System====================
     def disinfect_system(self):
-        """Kill the host_agent.py process and stop the CSV simulation stream"""
-        import psutil # Ensure psutil is imported
+        """Kill the host_agent.py process, stop the CSV simulation stream, and delete the file"""
+        import psutil
+        import os 
         
         # 1. Stop the CSV Simulation & Monitoring
         if self.monitoring_active:
@@ -999,13 +955,29 @@ class MalwareDetectorUI:
                     self.log_message(f"[DISINFECT] Neutralized host_agent.py (PID: {proc.info['pid']})")
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
+
+        # 3. Delete the malicious data stream file (CSV)
+        file_deleted = False
+        try:
+            if os.path.exists(SIM_FILE_PATH):
+                os.remove(SIM_FILE_PATH)
+                self.log_message("[DISINFECT] Threat payload successfully deleted from disk.")
+                file_deleted = True
+        except Exception as e:
+            self.log_message(f"[DISINFECT ERROR] Could not delete data file: {e}")
         
-        # 3. Provide UI Feedback
+        # 4. Provide Dynamic UI Feedback
+        feedback_msg = "Data Exfiltration stopped."
         if agent_killed:
-            self.show_info_dialog("System Disinfected", "Threat neutralized.\n\n host_agent terminated.")
-            self.clear_alerts() # Optional: Clear the alerts board after disinfecting
+            feedback_msg += "\n✓ SCAN COMPLETED."
+        if file_deleted:
+            feedback_msg += "\n✓ Malicious payload file permanently deleted."
+            
+        if agent_killed or file_deleted:
+            self.show_info_dialog("System Disinfected", f"Threat neutralized.\n\n{feedback_msg}")
+            self.clear_alerts() # Clear the alerts board after disinfecting
         else:
-            self.show_info_dialog("Disinfect Status", "Data Exfiltration stopped.\n\nNo active host_agent process was found running in the background.")
+            self.show_info_dialog("Disinfect Status", "Data stream stopped.\n\nNo active threats or payload files were found on the system.")
 
     # ==================== SETTINGS PAGE ====================
     def create_settings_page(self):
@@ -1162,14 +1134,14 @@ class MalwareDetectorUI:
         # Start monitoring based on detection mode
         mode = self.detection_mode.get()
         if mode == "hybrid" and os.path.exists(SIM_FILE_PATH):
-            self.status_label.config(text="Status: Hybrid Mode (Live + Capture)", 
+            self.status_label.config(text="Status: SCAN MODE (DATA)", 
                                     fg=CyberTheme.ACCENT_PURPLE)
-            self.log_message(f"[HYBRID] Starting Hybrid Detection with CSV injection...")
+            self.log_message(f"[HYBRID] Starting Hybrid Detection...")
             self.run_simulation_thread(SIM_FILE_PATH)
         elif mode == "hybrid" and not os.path.exists(SIM_FILE_PATH):
-            self.status_label.config(text="Status: Hybrid Mode (Live Only - No CSV)", 
+            self.status_label.config(text="Status: SCAN MODE", 
                                     fg=CyberTheme.ACCENT_YELLOW)
-            self.log_message(f"[HYBRID] CSV file not found. Running Live monitoring only.")
+            self.log_message(f"[HYBRID] Data file not found. Running Live monitoring only.")
         else:  # realtime mode
             self.status_label.config(text="Status: Real-Time Monitoring", 
                                     fg=CyberTheme.ACCENT_GREEN)
@@ -1486,7 +1458,7 @@ class MalwareDetectorUI:
                 
                 self.lbl_csv_info.config(
                     #text=f"● STREAMING: {os.path.basename(file_path)}", 
-                    text=f"● STREAMING: Any.Run Capture",
+                    text=f"● STREAMING: PARSER Capture",
                     fg=CyberTheme.ACCENT_PURPLE
                 )
                 

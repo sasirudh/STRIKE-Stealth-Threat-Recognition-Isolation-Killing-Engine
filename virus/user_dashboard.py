@@ -236,6 +236,7 @@ class Dashboard(tk.Tk):
         self.freq_list.tag_config("bar",   foreground=BORDER)
 
     # ── Active window banner ─────────────────────────────────
+    """
     def _build_active_window_bar(self, parent):
         self.window_bar = tk.Frame(parent, bg=BORDER, padx=12, pady=8)
         self.window_bar.pack(fill="x", pady=(0, 8))
@@ -247,6 +248,29 @@ class Dashboard(tk.Tk):
                                     font=("Segoe UI", 10, "bold"),
                                     fg=WHITE, bg=BORDER)
         self.lbl_win_app.pack(side="left", padx=10)
+        self.lbl_win_title = tk.Label(self.window_bar, text="—",
+                                      font=("Segoe UI", 9), fg=DIM, bg=BORDER)
+        self.lbl_win_title.pack(side="left")
+    """
+    def _build_active_window_bar(self, parent):
+        self.window_bar = tk.Frame(parent, bg=BORDER, padx=12, pady=8)
+        self.window_bar.pack(fill="x", pady=(0, 8))
+        self.lbl_win_ctx = tk.Label(self.window_bar, text="Browser",
+                                    font=("Courier New", 10, "bold"),
+                                    fg=BG, bg=BLUE, padx=8, pady=2)
+        self.lbl_win_ctx.pack(side="left")
+        
+        self.lbl_win_app = tk.Label(self.window_bar, text="—",
+                                    font=("Segoe UI", 10, "bold"),
+                                    fg=WHITE, bg=BORDER)
+        self.lbl_win_app.pack(side="left", padx=10)
+
+        # NEW: The Website Label (Highlighted in Yellow)
+        self.lbl_win_web = tk.Label(self.window_bar, text="",
+                                    font=("Segoe UI", 10, "bold"),
+                                    fg=YELLOW, bg=BORDER)
+        self.lbl_win_web.pack(side="left", padx=(0, 10))
+
         self.lbl_win_title = tk.Label(self.window_bar, text="—",
                                       font=("Segoe UI", 9), fg=DIM, bg=BORDER)
         self.lbl_win_title.pack(side="left")
@@ -395,7 +419,7 @@ class Dashboard(tk.Tk):
         self.lbl_net_dn.config(text=self._fmt(d.get("net_recv_ps", 0)) + "/s")
         self.lbl_procs.config(text=str(d.get("proc_count", "—")))
         self.lbl_platform.config(text=d.get("platform", "—"))
-
+    """
     def _handle_keystroke(self, d):
         key      = d.get("key", "")
         key_type = d.get("key_type", "char")
@@ -440,7 +464,62 @@ class Dashboard(tk.Tk):
             self.key_text.insert("end", key, context)
         self.key_text.see("end")
         self.key_text.config(state="disabled")
+    """
+    def _handle_keystroke(self, d):
+        key      = d.get("key", "")
+        key_type = d.get("key_type", "char")
+        app      = d.get("app", "Unknown")
+        title    = d.get("title", "—")
+        context  = d.get("context", "App")
+        website  = d.get("website", "—")  # NEW: Extract website from payload
+        ts       = d.get("ts", "")
 
+        # Session counter
+        self._session_keys += 1
+        self.lbl_session.config(text=f"Keystrokes this session: {self._session_keys}")
+
+        # App frequency
+        self._app_counts[app] += 1
+        self._refresh_freq_panel()
+
+        # Update active context if changed (Added title check for browser tab switching!)
+        if app != self._current_app or title != self._current_title or context != self._current_ctx:
+            self._current_app   = app
+            self._current_title = title
+            self._current_ctx   = context
+            col = CONTEXT_COLORS.get(context, DIM)
+
+            self.lbl_ctx_badge.config(text=context, bg=col)
+            self.lbl_ctx_app.config(text=f"App:    {app}")
+            self.lbl_ctx_title.config(text=f"Window: {title}")
+
+            self.lbl_win_ctx.config(text=context, bg=col)
+            self.lbl_win_app.config(text=app)
+
+            # NEW: Display the website if in a browser, otherwise hide it
+            if context == "Browser" and website != "—":
+                self.lbl_win_web.config(text=f"[{website}]")
+            else:
+                self.lbl_win_web.config(text="")
+
+            self.lbl_win_title.config(text=title[:60] + "…" if len(title) > 60 else title)
+
+            # Timeline entry for app switch (Now includes website name)
+            if context == "Browser":
+                self._log_timeline(f"[{ts}] ▶ {context}  {app} [{website}] — {title[:40]}", "app")
+            else:
+                self._log_timeline(f"[{ts}] ▶ {context}  {app}  —  {title[:50]}", "app")
+
+        # Append key to stream
+        self.key_text.config(state="normal")
+        if key_type == "special":
+            display = f"[{key}]"
+            self.key_text.insert("end", display, "special")
+        else:
+            self.key_text.insert("end", key, context)
+        self.key_text.see("end")
+        self.key_text.config(state="disabled")
+        
     def _refresh_freq_panel(self):
         sorted_apps = sorted(self._app_counts.items(), key=lambda x: x[1], reverse=True)
         total = max(sum(v for _, v in sorted_apps), 1)

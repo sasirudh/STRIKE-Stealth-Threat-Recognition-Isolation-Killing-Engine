@@ -59,7 +59,7 @@ class Dashboard(tk.Tk):
 
     def __init__(self):
         super().__init__()
-        self.title("SysSpy Dashboard  |  FYP Monitoring Demo")
+        self.title("Agent Tesla")
         self.geometry("1180x740")
         self.minsize(960, 640)
         self.configure(bg=BG)
@@ -95,9 +95,9 @@ class Dashboard(tk.Tk):
         inner_top = tk.Frame(top, bg="#090b14")
         inner_top.pack(fill="x", padx=16, pady=10)
 
-        tk.Label(inner_top, text="◈  SysSpy", font=("Courier New", 16, "bold"),
+        tk.Label(inner_top, text="◈  Agent Tesla", font=("Courier New", 16, "bold"),
                  fg=GREEN, bg="#090b14").pack(side="left")
-        tk.Label(inner_top, text="Educational Monitoring Dashboard  |  FYP",
+        tk.Label(inner_top, text="3.2.8.4 |  English (US)",
                  font=("Segoe UI", 10), fg=DIM, bg="#090b14").pack(side="left", padx=14)
 
         self.lbl_conn = tk.Label(inner_top, text="● OFFLINE",

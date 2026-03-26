@@ -918,6 +918,10 @@ class MalwareDetectorUI:
                                  self.update_alert_visualization, 
                                  CyberTheme.ACCENT_GREEN).pack(side=LEFT, padx=5)
         
+        self.create_action_button(controls, "DISINFECT", 
+                                 self.disinfect_system, 
+                                 CyberTheme.ACCENT_RED).pack(side=LEFT, padx=5)
+        
         # Tabs
         self.alert_tabs = ttk.Notebook(page, style="Cyber.TNotebook")
         self.alert_tabs.pack(fill=BOTH, expand=True, padx=20, pady=20)
@@ -973,6 +977,36 @@ class MalwareDetectorUI:
         
         return page
     
+    # ====================Disinfect System (Placeholder)====================
+    def disinfect_system(self):
+        """Kill the host_agent.py process and stop the CSV simulation stream"""
+        import psutil # Ensure psutil is imported
+        
+        # 1. Stop the CSV Simulation & Monitoring
+        if self.monitoring_active:
+            self.stop_monitoring()
+            self.log_message("[DISINFECT] CSV data stream halted.")
+        
+        # 2. Hunt down and terminate host_agent.py
+        agent_killed = False
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmdline = proc.info['cmdline']
+                # Check if it's a python process and running host_agent.py
+                if cmdline and any('host_agent.py' in cmd for cmd in cmdline):
+                    proc.kill() # Force kill the malware agent
+                    agent_killed = True
+                    self.log_message(f"[DISINFECT] Neutralized host_agent.py (PID: {proc.info['pid']})")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        
+        # 3. Provide UI Feedback
+        if agent_killed:
+            self.show_info_dialog("System Disinfected", "Threat neutralized.\n\n host_agent terminated.")
+            self.clear_alerts() # Optional: Clear the alerts board after disinfecting
+        else:
+            self.show_info_dialog("Disinfect Status", "Data Exfiltration stopped.\n\nNo active host_agent process was found running in the background.")
+
     # ==================== SETTINGS PAGE ====================
     def create_settings_page(self):
         """System configuration and ML training"""

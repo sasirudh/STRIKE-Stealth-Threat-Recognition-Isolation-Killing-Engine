@@ -21,3 +21,4 @@ env/
 *.png
 *.csv
 *.csv
+/data

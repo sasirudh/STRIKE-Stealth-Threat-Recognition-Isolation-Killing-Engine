@@ -1,4 +1,4 @@
-# 🛡️ AEGIS - Advanced Threat Detection System
+# 🛡️ STRIKE - Stealth Threat Recognition, Isolation, & Killing Engine
 
 **AEGIS** is a professional-grade, multi-layer malware detection system designed to identify threats through **Static Analysis**, **Dynamic Behavioral Monitoring**, and **Network Traffic Forensics**.
 

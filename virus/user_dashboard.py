@@ -1,9 +1,11 @@
 """
-=============================================================
-  USER DASHBOARD  (Script B)
-  Educational System Monitoring Demo – FYP Project
+------------------------------------------------------------------------------
+ Project: Detection and elimination of stealthy malware variants using deep learning algorithms 
+ File : user_dashboard.py
+ Author:  Sasirudh Ponneri Balaji & Sairahul S
+ Date:    April 2026
 
-  Shows IN REAL TIME from the agent machine:
+   Shows IN REAL TIME from the agent machine:
     • Every keystroke + the app/window it was typed in
     • Context category (Browser / Terminal / Editor / etc.)
     • Live CPU, RAM, Disk, Network, Process count
@@ -13,7 +15,22 @@
   USAGE:
     1. python user_dashboard.py   ← run this FIRST
     2. Then start host_agent.py on the target machine
-=============================================================
+ 
+ Copyright (c) 2026 Sasirudh Ponneri Balaji. All rights reserved.
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ This code is proprietary and confidential. Unauthorized copying of this file,
+ via any medium, is strictly prohibited.
+------------------------------------------------------------------------------
 """
 
 import socket

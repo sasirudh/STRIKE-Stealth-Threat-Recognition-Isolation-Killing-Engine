@@ -1,9 +1,11 @@
 """
-=============================================================
-  HOST AGENT  (Script A)
-  Educational System Monitoring Demo – FYP Project
+------------------------------------------------------------------------------
+ Project: Detection and elimination of stealthy malware variants using deep learning algorithms 
+ File : host_agent.py
+ Author:  Sasirudh Ponneri Balaji & Sairahul S
+ Date:    April 2026
 
-  Captures FROM YOUR OWN MACHINE:
+ Captures FROM YOUR OWN MACHINE:
     • Every keystroke (character + special keys)
     • Active window title & application name at time of press
     • Context category (Browser / Terminal / Editor / etc.)
@@ -12,13 +14,28 @@
   INSTALL:
     pip install psutil pynput
     Windows also needs:  pip install pywin32
-    Linux also needs:    sudo apt install xdotool
     pip install pystray pillow
   USAGE:
     1. Edit DASHBOARD_IP below to match dashboard machine IP
     2. python host_agent.py
-=============================================================
+ 
+ Copyright (c) 2026 Sasirudh Ponneri Balaji. All rights reserved.
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ This code is proprietary and confidential. Unauthorized copying of this file,
+ via any medium, is strictly prohibited.
+------------------------------------------------------------------------------
 """
+
 import os
 import tkinter as tk
 import io

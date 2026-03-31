@@ -19,13 +19,14 @@
 import socket
 import io
 import base64
-from PIL import Image
+from PIL import Image, ImageDraw, ImageTk
 import json
 import threading
 import time
 import tkinter as tk
 from tkinter import ttk, scrolledtext,messagebox
 from collections import defaultdict
+from resource_manager import get_resource_path
 
 
 LISTEN_HOST = "0.0.0.0"
@@ -90,23 +91,42 @@ class Dashboard(tk.Tk):
     # ════════════════════════════════════════════════════════
     def _build_ui(self):
         self._style_ttk()
-
+        
+        # --- LOAD THE APP ICONS ---
+        try:
+            # 1. Load and resize the image for the UI top bar
+            img = Image.open(get_resource_path("icons/server.png")).resize((24, 24), Image.LANCZOS)
+            self.top_logo = ImageTk.PhotoImage(img) # Must save to 'self' so it doesn't disappear
+            
+            # 2. Set the actual Windows Application/Taskbar icon
+            self.iconphoto(False, self.top_logo)
+        except Exception as e:
+            print(f"Could not load icon: {e}")
+            self.top_logo = None
+        # -------------------------------
+        
         # ── Title bar ────────────────────────────────────────
         top = tk.Frame(self, bg="#090b14", pady=0)
         top.pack(fill="x")
-        tk.Canvas(top, bg="#090b14", height=3, bd=0, highlightthickness=0,
-                  ).pack(fill="x")
+        tk.Canvas(top, bg="#090b14", height=3, bd=0, highlightthickness=0).pack(fill="x")
+        
         inner_top = tk.Frame(top, bg="#090b14")
         inner_top.pack(fill="x", padx=16, pady=10)
 
-        tk.Label(inner_top, text=" Agent Tesla", font=("Courier New", 16, "bold"),
-                 fg=GREEN, bg="#090b14").pack(side="left")
+        # --- UPDATED: ADD THE IMAGE TO THE LABEL ---
+        self.lbl_title = tk.Label(inner_top, text=" Agent Tesla", font=("Courier New", 16, "bold"),
+                                  fg=GREEN, bg="#090b14", 
+                                  image=self.top_logo, compound="left") # compound="left" puts the image to the left of the text
+        self.lbl_title.pack(side="left")
+        # -------------------------------------------
+
         tk.Label(inner_top, text="3.2.8.4 |  English (US)",
                  font=("Segoe UI", 10), fg=DIM, bg="#090b14").pack(side="left", padx=14)
 
         self.lbl_conn = tk.Label(inner_top, text="● OFFLINE",
                                  font=("Segoe UI", 10, "bold"), fg=RED, bg="#090b14")
         self.lbl_conn.pack(side="right")
+        
         self.lbl_agent_ip = tk.Label(inner_top, text="",
                                      font=FONT_UI, fg=DIM, bg="#090b14")
         self.lbl_agent_ip.pack(side="right", padx=10)
@@ -144,13 +164,14 @@ class Dashboard(tk.Tk):
         # ── Status bar ───────────────────────────────────────
         bar = tk.Frame(self, bg="#090b14", pady=5)
         bar.pack(fill="x", side="bottom")
+        
         self.lbl_status = tk.Label(bar, text=f"Listening on port {LISTEN_PORT} …",
                                    font=("Segoe UI", 9), fg=DIM, bg="#090b14")
         self.lbl_status.pack(side="left", padx=14)
+        
         self.lbl_session = tk.Label(bar, text="Keystrokes this session: 0",
                                     font=("Segoe UI", 9), fg=DIM, bg="#090b14")
         self.lbl_session.pack(side="right", padx=14)
-
     def _style_ttk(self):
         # Initialize the style object linked to this instance
         s = ttk.Style(self)

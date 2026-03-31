@@ -27,7 +27,7 @@ from PIL import ImageGrab
 import shutil
 from tkinter import messagebox
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
 import socket
 import json
 import threading

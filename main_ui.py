@@ -95,6 +95,10 @@ class MalwareDetectorUI:
         
         # Monitoring state
         self.monitoring_active = False
+        self.sim_active = False
+        self.sim_thread_id = 0
+        self.auto_check_job = None      # Tracks the 10-second loop
+        self.current_auto_mode = None
         self.update_job = None
         self.status_blink = False
         
@@ -938,10 +942,10 @@ class MalwareDetectorUI:
         import psutil
         import os 
         
-        # 1. Stop the CSV Simulation & Monitoring
-        if self.monitoring_active:
-            self.stop_monitoring()
-            self.log_message("[DISINFECT] CSV data stream halted.")
+        # 1. Halt the CSV stream, BUT LEAVE THE ENGINE ONLINE
+        if self.sim_active:
+            self.sim_active = False
+            self.log_message("[DISINFECT] data stream halted.")
         
         # 2. Hunt down and terminate host_agent.py
         agent_killed = False
@@ -965,8 +969,13 @@ class MalwareDetectorUI:
                 file_deleted = True
         except Exception as e:
             self.log_message(f"[DISINFECT ERROR] Could not delete data file: {e}")
+            
+        # 4. Force an immediate auto-check so the UI instantly snaps back to SAFE Real-Time
+        if self.monitoring_active:
+            self.current_auto_mode = None  # Reset tracker to force a UI refresh
+            self.auto_mode_check()         # Trigger the jump
         
-        # 4. Provide Dynamic UI Feedback
+        # 5. Provide Dynamic UI Feedback
         feedback_msg = "Data Exfiltration stopped."
         if agent_killed:
             feedback_msg += "\n✓ SCAN COMPLETED."
@@ -1017,12 +1026,31 @@ class MalwareDetectorUI:
         status_text.insert("1.0", "\n".join(status_lines))
         status_text.config(state=DISABLED)
         
+
         # Detection Mode Panel
         mode_panel = self.create_panel(content, "◇ DETECTION MODE")
         mode_panel.pack(fill=X, pady=(0, 15))
         
         mode_frame = Frame(mode_panel, bg=CyberTheme.BG_CARD)
         mode_frame.pack(fill=X, padx=15, pady=15)
+        
+        # Auto Mode description
+        mode_desc = Label(mode_frame, 
+                         text="System is running in AUTONOMOUS MODE.\nPayload presence is scanned every 10 seconds.",
+                         bg=CyberTheme.BG_CARD,
+                         fg=CyberTheme.TEXT_SECONDARY,
+                         font=("Consolas", 10),
+                         justify=LEFT)
+        mode_desc.pack(anchor=W, pady=(0, 10))
+        
+        # Auto Mode status indicator
+        self.mode_status_label = Label(mode_frame,
+                                      text="AUTO-POLLING: ACTIVE",
+                                      bg=CyberTheme.BG_CARD,
+                                      fg=CyberTheme.ACCENT_CYAN,
+                                      font=("Consolas", 10, "bold"))
+        self.mode_status_label.pack(anchor=W)
+        # -------------------------------------
         
         # Mode description
         mode_desc = Label(mode_frame, 
@@ -1121,7 +1149,7 @@ class MalwareDetectorUI:
     
     # ==================== MONITORING CONTROL ====================
     def start_smart_monitoring(self):
-        """Start monitoring based on selected detection mode"""
+        """Start monitoring and trigger the auto-polling system"""
         self.backend.start_monitoring()
         self.monitoring_active = True
         
@@ -1131,38 +1159,32 @@ class MalwareDetectorUI:
         self.status_indicator.config(fg=CyberTheme.ACCENT_GREEN)
         self.status_text.config(text="ONLINE", fg=CyberTheme.ACCENT_GREEN)
         
-        # Start monitoring based on detection mode
-        mode = self.detection_mode.get()
-        if mode == "hybrid" and os.path.exists(SIM_FILE_PATH):
-            self.status_label.config(text="Status: SCAN MODE (DATA)", 
-                                    fg=CyberTheme.ACCENT_PURPLE)
-            self.log_message(f"[HYBRID] Starting Hybrid Detection...")
-            self.run_simulation_thread(SIM_FILE_PATH)
-        elif mode == "hybrid" and not os.path.exists(SIM_FILE_PATH):
-            self.status_label.config(text="Status: SCAN MODE", 
-                                    fg=CyberTheme.ACCENT_YELLOW)
-            self.log_message(f"[HYBRID] Data file not found. Running Live monitoring only.")
-        else:  # realtime mode
-            self.status_label.config(text="Status: Real-Time Monitoring", 
-                                    fg=CyberTheme.ACCENT_GREEN)
-            self.log_message("[LIVE] Real-time hardware monitoring active.")
+        # Reset the mode tracker and immediately run the first check
+        self.current_auto_mode = None
+        self.auto_mode_check()
         
         # Start UI updates
         if self.update_job is None:
             self.schedule_updates()
     
     def stop_monitoring(self):
-        """Stop monitoring system"""
+        """Stop monitoring system and cancel background loops"""
         self.backend.stop_monitoring()
         self.monitoring_active = False
+        self.sim_active = False  # Kill CSV thread
+        self.current_auto_mode = None
         
-        self.start_btn.config(state=NORMAL, text="▶ START SYSTEM")
+        # Cancel the 10-second auto-check loop
+        if self.auto_check_job is not None:
+            self.root.after_cancel(self.auto_check_job)
+            self.auto_check_job = None
+        
+        self.start_btn.config(state=NORMAL, text="▶ ENGAGE SYSTEM")
         self.stop_btn.config(state=DISABLED)
         self.status_indicator.config(fg=CyberTheme.TEXT_DIM)
         self.status_text.config(text="OFFLINE", fg=CyberTheme.TEXT_DIM)
-        self.status_label.config(text="Status: System Stopped", 
-                                fg=CyberTheme.ACCENT_RED)
-        self.log_message("[SYSTEM] Monitoring stopped.")
+        self.status_label.config(text="Status: System Stopped", fg=CyberTheme.ACCENT_RED)
+        self.log_message("[SYSTEM] Monitoring stopped. Auto-polling suspended.")
     
     def animate_status_indicator(self):
         """Animate status indicator when active"""
@@ -1174,6 +1196,51 @@ class MalwareDetectorUI:
                 self.status_indicator.config(fg=self.lighten_color(CyberTheme.ACCENT_GREEN))
         
         self.root.after(500, self.animate_status_indicator)
+
+
+    # ==================== AUTO-MODE CHECK ====================
+    def auto_mode_check(self):
+        """Automatically check for the CSV payload every 10 seconds and switch modes"""
+        if not self.monitoring_active:
+            self.auto_check_job = None
+            return
+
+        file_exists = os.path.exists(SIM_FILE_PATH)
+
+        if file_exists and self.current_auto_mode != "hybrid":
+            # --- SWITCH TO HYBRID (File Found) ---
+            self.current_auto_mode = "hybrid"
+            self.log_message("[AUTO-SYS] Payload detected. Engaging Hybrid Data Stream...")
+            
+            # Update Status and Verdict
+            self.status_label.config(text="Status: SCAN MODE", fg=CyberTheme.ACCENT_PURPLE)
+            self.ensemble_label.config(text="Verdict: SUSPICIOUS", fg=CyberTheme.ACCENT_RED)
+            
+            # Visual jump to Threat Analysis
+            self.show_page("dynamic")
+            if hasattr(self, 'dyn_tabs'):
+                self.dyn_tabs.select(1)
+                
+            self.run_simulation_thread(SIM_FILE_PATH)
+
+        elif not file_exists and self.current_auto_mode != "realtime":
+            # --- SWITCH TO REAL-TIME (File Missing/Deleted) ---
+            self.current_auto_mode = "realtime"
+            self.sim_active = False # Safely kills the CSV thread if it was running
+            
+            self.log_message("[AUTO-SYS] No payload found. Engaging SAFE Real-Time Mode.")
+            
+            # Update Status and Verdict
+            self.status_label.config(text="Status: SCAN MODE", fg=CyberTheme.ACCENT_GREEN)
+            self.ensemble_label.config(text="Verdict: SAFE", fg=CyberTheme.ACCENT_GREEN)
+            
+            # Visual jump to Live Monitor
+            self.show_page("dynamic")
+            if hasattr(self, 'dyn_tabs'):
+                self.dyn_tabs.select(0)
+
+        # Schedule the next check in 10 seconds
+        self.auto_check_job = self.root.after(10000, self.auto_mode_check)
     
     # ==================== UI UPDATE LOOP ====================
     def schedule_updates(self):
@@ -1445,39 +1512,35 @@ class MalwareDetectorUI:
     
     # ==================== SIMULATION THREAD ====================
     def run_simulation_thread(self, file_path):
-        """Run CSV simulation in background thread"""
+        """Run CSV simulation in background thread securely"""
+        self.sim_thread_id += 1
+        current_id = self.sim_thread_id
+        self.sim_active = True
+
         def sim_loop():
             try:
                 df = pd.read_csv(file_path)
                 df.columns = df.columns.str.strip()
                 
-                # Reset buffers
                 self.backend.dynamic_layer.csv_buffer = []
                 self.backend.network_layer.sim_buffer = []
                 self.backend.alerts = []
                 
-                self.lbl_csv_info.config(
-                    #text=f"● STREAMING: {os.path.basename(file_path)}", 
-                    text=f"● STREAMING: PARSER Capture",
-                    fg=CyberTheme.ACCENT_PURPLE
-                )
+                self.root.after(0, lambda: self.lbl_csv_info.config(
+                    text=f"● STREAMING: PARSER Capture", fg=CyberTheme.ACCENT_PURPLE
+                ))
                 
                 for index, row in df.iterrows():
-                    if not self.monitoring_active:
+                    # Break immediately if stopped or mode switched to Real-Time
+                    if not self.monitoring_active or not self.sim_active or self.sim_thread_id != current_id:
                         break
                     
                     sim_pid = random.randint(1000, 9999)
                     cat_name = row.get('Category', 'Unknown')
                     
-                    # Feed layers
-                    dyn_result = self.backend.dynamic_layer.inject_single_row(
-                        row, sim_pid, cat_name
-                    )
-                    net_result = self.backend.network_layer.inject_single_row(
-                        row, sim_pid
-                    )
+                    dyn_result = self.backend.dynamic_layer.inject_single_row(row, sim_pid, cat_name)
+                    net_result = self.backend.network_layer.inject_single_row(row, sim_pid)
                     
-                    # Correlation logic
                     if dyn_result and net_result:
                         is_proc_mal = dyn_result['status'] == "MALICIOUS"
                         is_net_mal = net_result['status'] == "MALICIOUS"
@@ -1496,14 +1559,13 @@ class MalwareDetectorUI:
                     
                     time.sleep(0.5)
                 
-                if self.monitoring_active:
-                    self.lbl_csv_info.config(
-                        text="◆ SIMULATION COMPLETE", 
-                        fg=CyberTheme.TEXT_DIM
-                    )
+                if self.sim_thread_id == current_id:
+                    self.sim_active = False 
             
             except Exception as e:
                 print(f"[SIM ERROR] {e}")
+                if self.sim_thread_id == current_id:
+                    self.sim_active = False
         
         threading.Thread(target=sim_loop, daemon=True).start()
     

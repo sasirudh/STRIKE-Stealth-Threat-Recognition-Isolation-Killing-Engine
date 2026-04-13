@@ -59,9 +59,12 @@ class DynamicLayer:
             self.use_ml = False
 
     def _generate_target_resource(self):
-        """Generate a random target resource for deep system monitoring display"""
+        """Generate a random target resource for deep system monitoring display, using REAL network IPs"""
         import random
+        import psutil
+        import socket
         
+        # 1. Base Static Resources (Registry, Files, Processes, Memory)
         resources = [
             # Registry keys
             "HKLM\\Software\\Microsoft\\Windows\\CurrentVersion\\Run",
@@ -74,12 +77,6 @@ class DynamicLayer:
             "C:\\Windows\\System32\\svchost.exe",
             "C:\\Users\\Public\\Documents\\temp.exe",
             "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
-            
-            # Network addresses
-            "192.168.1.100:443",
-            "10.0.0.1:8080",
-            "malicious-domain.com:80",
-            "command-control-server.net:8443",
             
             # Process names
             "lsass.exe",
@@ -94,6 +91,42 @@ class DynamicLayer:
             "ntdll.dll+0x3C100"
         ]
         
+        # 2. Dynamically fetch REAL connected internet IPs
+        live_network_targets = []
+        try:
+            for conn in psutil.net_connections(kind='inet'):
+                if conn.status == 'ESTABLISHED' and conn.raddr:
+                    ip = conn.raddr.ip
+                    port = conn.raddr.port
+                    if ip not in ['127.0.0.1', '0.0.0.0', '::1']:
+                        live_network_targets.append(f"{ip}:{port}")
+        except Exception:
+            pass # Ignore access denied errors
+            
+        live_network_targets = list(set(live_network_targets))
+        if live_network_targets:
+            resources.extend(live_network_targets)
+            
+        # 3. Detect the Local Hotspot/WiFi Subnet
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80)) # Connect to Google DNS just to route the interface
+            my_ip = s.getsockname()[0]
+            base_ip = ".".join(my_ip.split(".")[:-1]) + "." # e.g., "172.20.10."
+        except Exception:
+            base_ip = "172.20.10." # Fallback directly to standard hotspot IP if offline
+        finally:
+            s.close()
+
+        hotspot_targets = [
+            f"{base_ip}{random.randint(2, 15)}:443",
+            f"{base_ip}{random.randint(2, 15)}:8080",
+            f"{base_ip}{random.randint(2, 15)}:445", # SMB Port (Classic for worms/ransomware)
+            f"{base_ip}{random.randint(2, 15)}:80"
+        ]
+        
+        resources.extend(hotspot_targets)
+            
         return random.choice(resources)
 
     def inject_single_row(self, row_data, pid, category):

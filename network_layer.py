@@ -135,6 +135,12 @@ class NetworkLayer:
     # 2. SIMULATION INJECTION (CSV Feed)
     # ==========================================
     def inject_single_row(self, row_data, pid):
+        import socket
+        import random
+        import psutil
+        import time
+        import numpy as np
+        
         try:
             risk = 0.0
             status = "Safe"
@@ -148,12 +154,45 @@ class NetworkLayer:
             if risk > 0.5: status = "MALICIOUS"
             
             dst_port = int(row_data.get('Destination Port', 80))
+            
+            # --- NEW DYNAMIC IP MAPPING LOGIC ---
+            # 1. Detect Local Subnet (Hotspot)
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                s.connect(("8.8.8.8", 80))
+                my_ip = s.getsockname()[0]
+                base_ip = ".".join(my_ip.split(".")[:-1]) + "."
+            except Exception:
+                base_ip = "172.20.10." # Fallback to standard mobile hotspot
+            finally:
+                s.close()
+
+            # 2. Assign IPs based on Threat Status
             if status == "MALICIOUS":
-                remote_ip = f"192.168.100.{random.randint(10,50)}"
+                # Malicious: Simulate lateral spreading to other devices on the hotspot!
+                remote_ip = f"{base_ip}{random.randint(2, 15)}"
                 conn_status = "SYN_SENT"
             else:
-                remote_ip = f"8.8.{random.randint(4,8)}.8"
+                # Safe: Fetch REAL external connections from your actual computer
+                real_ips = []
+                try:
+                    for conn in psutil.net_connections(kind='inet'):
+                        if conn.status == 'ESTABLISHED' and conn.raddr:
+                            ip = conn.raddr.ip
+                            # Don't use localhost or local hotspot IPs for external safe traffic
+                            if ip not in ['127.0.0.1', '0.0.0.0', '::1'] and not ip.startswith(base_ip):
+                                real_ips.append(ip)
+                except Exception:
+                    pass
+                
+                if real_ips:
+                    remote_ip = random.choice(real_ips)
+                else:
+                    # Fallback to Google DNS if no active internet connections are found
+                    remote_ip = f"8.8.{random.randint(4,8)}.8" 
+                
                 conn_status = "ESTABLISHED"
+            # ------------------------------------
             
             record = {
                 "time": time.strftime("%H:%M:%S"),
@@ -162,6 +201,7 @@ class NetworkLayer:
                 "risk": float(risk),
                 "alert": status
             }
+            
             # after determining pid and remote_ip
             self.proc_ip_map.setdefault(str(pid), set()).add(remote_ip)
             self.sim_buffer.append(record)

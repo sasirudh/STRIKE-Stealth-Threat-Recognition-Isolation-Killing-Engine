@@ -48,7 +48,7 @@ class StaticLayer:
         if is_eicar_test_file(file_path):
             result['label'] = 'Malicious'
             result['score'] = 1.0
-            result['details']['method'] = 'EICAR_Signature'
+            result['details']['method'] = 'Signature'
             self.scan_history.append(result)
             return result
 

@@ -3,7 +3,7 @@
  Project: Detection and elimination of stealthy malware variants using deep learning algorithms 
  File : Main_ui
  Author:  Sasirudh Ponneri Balaji & Sairahul S
- Date:    February 2026
+ Date:    April 2026
  
  Copyright (c) 2026 Sasirudh Ponneri Balaji. All rights reserved.
  
@@ -34,6 +34,7 @@ import matplotlib
 matplotlib.use("TkAgg") 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
+from resource_manager import get_resource_path
 
 # Import backend modules
 from backend_manager import BackendManager
@@ -70,7 +71,7 @@ class CyberTheme:
     BORDER_GLOW = '#00d9ff'
 
 # Configuration
-SIM_FILE_PATH = r"C:\Users\sasir\OneDrive\Documents\Project\Final-year\Malware_Sim\Hybrid_malware.csv"
+SIM_FILE_PATH = get_resource_path("data/Hybrid_malware.csv") # Your simulated CSV file path
 
 class MalwareDetectorUI:
     """Cybersecurity Professional GUI"""
@@ -94,8 +95,12 @@ class MalwareDetectorUI:
         
         # Monitoring state
         self.monitoring_active = False
+        self.sim_active = False
         self.update_job = None
         self.status_blink = False
+        
+        # Detection mode
+        self.detection_mode = StringVar(value="hybrid") # Default to Hybrid mode
         
         # Create main layout
         self.create_navigation()
@@ -106,9 +111,6 @@ class MalwareDetectorUI:
         
         # Start status blink animation
         self.animate_status_indicator()
-        
-        # Bind keyboard shortcuts
-        self.bind_keyboard_shortcuts()
     
     def setup_custom_styles(self):
         """Configure custom ttk styles for cyber theme"""
@@ -162,52 +164,6 @@ class MalwareDetectorUI:
                        borderwidth=0,
                        arrowcolor=CyberTheme.ACCENT_CYAN)
 
-    # def setup_custom_styles(self):
-    #     """Configure custom ttk styles for cyber theme"""
-    #     style = ttk.Style()
-    #     style.theme_use('clam')
-        
-    #     # Treeview Style
-    #     style.configure("Cyber.Treeview",
-    #                    background=CyberTheme.BG_CARD,
-    #                    foreground=CyberTheme.TEXT_PRIMARY,
-    #                    fieldbackground=CyberTheme.BG_CARD,
-    #                    borderwidth=0,
-    #                    font=('Consolas', 9))
-    #     style.configure("Cyber.Treeview.Heading",
-    #                    background=CyberTheme.BG_PANEL,
-    #                    foreground=CyberTheme.ACCENT_CYAN,
-    #                    borderwidth=1,
-    #                    relief='flat',
-    #                    font=('Segoe UI', 9, 'bold'))
-    #     style.map('Cyber.Treeview',
-    #              background=[('selected', CyberTheme.BG_HOVER)])
-        
-    #     # Notebook Style
-    #     style.configure("Cyber.TNotebook",
-    #                    background=CyberTheme.BG_PANEL,
-    #                    borderwidth=0)
-    #     style.configure("Cyber.TNotebook.Tab",
-    #                    background=CyberTheme.BG_CARD,
-    #                    foreground=CyberTheme.TEXT_SECONDARY,
-    #                    padding=[20, 10],
-    #                    borderwidth=0,
-    #                    font=('Segoe UI', 10))
-    #     style.map("Cyber.TNotebook.Tab",
-    #              background=[('selected', CyberTheme.BG_PANEL)],
-    #              foreground=[('selected', CyberTheme.ACCENT_CYAN)])
-        
-    #     # Scrollbar Style
-    #     style.configure("Cyber.Vertical.TScrollbar",
-    #                    background=CyberTheme.BG_CARD,
-    #                    troughcolor=CyberTheme.BG_PANEL,
-    #                    borderwidth=0,
-    #                    arrowcolor=CyberTheme.ACCENT_CYAN)
-    #     style.configure("Cyber.Horizontal.TScrollbar",
-    #                    background=CyberTheme.BG_CARD,
-    #                    troughcolor=CyberTheme.BG_PANEL,
-    #                    borderwidth=0,
-    #                    arrowcolor=CyberTheme.ACCENT_CYAN)
     
     def create_navigation(self):
         """Create cyberpunk-style navigation bar"""
@@ -298,29 +254,13 @@ class MalwareDetectorUI:
         self.start_btn.pack(side=RIGHT, padx=3)
     
     def create_nav_button(self, parent, text, page):
-        """Create cyberpunk navigation button with optional badge"""
-        # Main button frame
-        btn_frame = Frame(parent, bg=CyberTheme.BG_CARD, relief=FLAT, bd=0)
-        
-        # Button label
-        btn = Label(btn_frame, text=text,
+        """Create cyberpunk navigation button"""
+        btn = Label(parent, text=text,
                    bg=CyberTheme.BG_CARD,
                    fg=CyberTheme.TEXT_SECONDARY,
                    font=("Segoe UI", 9, "bold"),
                    padx=15, pady=10,
                    cursor="hand2")
-        btn.pack(side=LEFT)
-        
-        # Badge for alerts
-        if page == "alerts":
-            self.alert_badge = Label(btn_frame, text="",
-                                    bg=CyberTheme.ACCENT_RED,
-                                    fg=CyberTheme.BG_DARK,
-                                    font=("Consolas", 7, "bold"),
-                                    padx=4, pady=1,
-                                    relief=FLAT)
-            self.alert_badge.pack(side=RIGHT, padx=(0, 5))
-            self.alert_badge.pack_forget()  # Hide initially
         
         def on_enter(e):
             if not hasattr(btn, 'active') or not btn.active:
@@ -338,7 +278,7 @@ class MalwareDetectorUI:
         btn.bind("<Button-1>", on_click)
         btn.active = False
         
-        return btn_frame
+        return btn
     
     def create_control_button(self, parent, text, command, color, state=NORMAL):
         """Create glowing control button"""
@@ -399,27 +339,16 @@ class MalwareDetectorUI:
                 page.pack_forget()
         
         # Update navigation button states
-        for name, btn_frame in self.nav_btn_refs.items():
-            btn = btn_frame.winfo_children()[0]  # Get the actual button label
+        for name, btn in self.nav_btn_refs.items():
             if name == page_name:
                 btn.config(bg=CyberTheme.BG_PANEL, 
                           fg=CyberTheme.ACCENT_CYAN,
                           relief=FLAT)
-                # Add bottom cyan border
-                if not hasattr(btn_frame, 'underline'):
-                    underline = Frame(btn_frame, bg=CyberTheme.ACCENT_CYAN, height=2)
-                    underline.pack(side=BOTTOM, fill=X)
-                    btn_frame.underline = underline
-                else:
-                    btn_frame.underline.pack(side=BOTTOM, fill=X)
                 btn.active = True
             else:
                 btn.config(bg=CyberTheme.BG_CARD, 
                           fg=CyberTheme.TEXT_SECONDARY,
                           relief=FLAT)
-                # Remove bottom border
-                if hasattr(btn_frame, 'underline'):
-                    btn_frame.underline.pack_forget()
                 btn.active = False
     
     # ==================== DASHBOARD PAGE ====================
@@ -439,16 +368,16 @@ class MalwareDetectorUI:
         cards_frame = Frame(content, bg=CyberTheme.BG_DARK)
         cards_frame.pack(fill=X, pady=(0, 20))
         
-        self.dash_static_card = self.create_cyber_card(
+        self.dash_static_score = self.create_cyber_card(
             cards_frame, "STATIC LAYER", "0.00", CyberTheme.ACCENT_CYAN, "◈"
         )
-        self.dash_dynamic_card = self.create_cyber_card(
+        self.dash_dynamic_score = self.create_cyber_card(
             cards_frame, "DYNAMIC LAYER", "0.00", CyberTheme.ACCENT_YELLOW, "◆"
         )
-        self.dash_network_card = self.create_cyber_card(
+        self.dash_network_score = self.create_cyber_card(
             cards_frame, "NETWORK LAYER", "0.00", CyberTheme.ACCENT_PURPLE, "◇"
         )
-        self.dash_ensemble_card = self.create_cyber_card(
+        self.dash_ensemble_score = self.create_cyber_card(
             cards_frame, "ENSEMBLE SCORE", "0.00", CyberTheme.ACCENT_GREEN, "⬢"
         )
         
@@ -461,18 +390,6 @@ class MalwareDetectorUI:
         
         right_col = Frame(columns, bg=CyberTheme.BG_DARK)
         right_col.pack(side=RIGHT, fill=BOTH, expand=True)
-        
-        # Threat Score Gauge (Left Column)
-        gauge_panel = self.create_panel(left_col, "⬢ THREAT SCORE GAUGE")
-        gauge_panel.pack(fill=BOTH, expand=True, pady=(0, 10))
-        
-        self.gauge_fig, self.gauge_ax = plt.subplots(figsize=(4, 3), dpi=100)
-        self.gauge_fig.patch.set_facecolor(CyberTheme.BG_CARD)
-        self.gauge_ax.set_facecolor(CyberTheme.BG_CARD)
-        self.gauge_ax.axis('off')
-        
-        self.gauge_canvas = FigureCanvasTkAgg(self.gauge_fig, master=gauge_panel)
-        self.gauge_canvas.get_tk_widget().pack(fill=BOTH, expand=True, padx=10, pady=10)
         
         # System Status Panel
         status_panel = self.create_panel(left_col, "⬢ SYSTEM STATUS")
@@ -523,66 +440,35 @@ class MalwareDetectorUI:
         return page
     
     def create_cyber_card(self, parent, title, value, color, icon):
-        """Create glowing metric card with dynamic border and sparkline"""
+        """Create glowing metric card"""
         card = Frame(parent, bg=CyberTheme.BG_CARD, relief=FLAT, bd=0)
         card.pack(side=LEFT, fill=BOTH, expand=True, padx=8)
         
-        # Dynamic colored border glow
-        self.border_frame = Frame(card, bg=color, relief=FLAT, bd=0)
-        self.border_frame.pack(fill=BOTH, expand=True, padx=2, pady=2)
-        
-        # Inner content
-        inner = Frame(self.border_frame, bg=CyberTheme.BG_CARD, relief=FLAT, bd=0)
-        inner.pack(fill=BOTH, expand=True, padx=1, pady=1)
+        # Colored top border
+        border = Frame(card, bg=color, height=3)
+        border.pack(fill=X)
         
         # Icon
-        icon_label = Label(inner, text=icon, 
+        icon_label = Label(card, text=icon, 
                           bg=CyberTheme.BG_CARD, 
                           fg=color, 
                           font=("Arial", 24))
         icon_label.pack(pady=(15, 5))
         
         # Title
-        title_label = Label(inner, text=title,
+        title_label = Label(card, text=title, 
                            bg=CyberTheme.BG_CARD, 
                            fg=CyberTheme.TEXT_SECONDARY, 
                            font=("Segoe UI", 9))
         title_label.pack()
         
         # Value
-        value_label = Label(inner, text=value, 
+        value_label = Label(card, text=value, 
                            bg=CyberTheme.BG_CARD, 
                            fg=color, 
                            font=("Consolas", 28, "bold"))
-        value_label.pack(pady=(5, 10))
+        value_label.pack(pady=(5, 20))
         
-        # Mini sparkline chart
-        sparkline_frame = Frame(inner, bg=CyberTheme.BG_CARD, height=30)
-        sparkline_frame.pack(fill=X, padx=10, pady=(0, 15))
-        sparkline_frame.pack_propagate(False)
-        
-        # Create sparkline canvas
-        sparkline_fig = plt.Figure(figsize=(2, 0.5), dpi=50)
-        sparkline_fig.patch.set_facecolor(CyberTheme.BG_CARD)
-        sparkline_ax = sparkline_fig.add_subplot(111)
-        sparkline_ax.set_facecolor(CyberTheme.BG_CARD)
-        sparkline_ax.axis('off')
-        
-        # Generate sample trend data (last 30 seconds)
-        trend_data = [float(value)] * 30  # Initialize with current value
-        sparkline_ax.plot(trend_data, color=color, linewidth=1.5)
-        sparkline_ax.fill_between(range(len(trend_data)), trend_data, color=color, alpha=0.3)
-        
-        sparkline_canvas = FigureCanvasTkAgg(sparkline_fig, master=sparkline_frame)
-        sparkline_canvas.get_tk_widget().pack(fill=BOTH, expand=True)
-        
-        # Store references for updates
-        card.border_frame = self.border_frame
-        card.value_label = value_label
-        card.sparkline_ax = sparkline_ax
-        card.sparkline_canvas = sparkline_canvas
-        card.trend_data = trend_data
-        card.color = color
         return value_label
     
     def create_page_header(self, parent, title, subtitle=""):
@@ -747,28 +633,6 @@ class MalwareDetectorUI:
         live_frame = Frame(self.tab_live, bg=CyberTheme.BG_CARD)
         live_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
         
-        # Search/Filter Bar
-        search_frame = Frame(live_frame, bg=CyberTheme.BG_CARD)
-        search_frame.pack(fill=X, pady=(0, 10))
-        
-        Label(search_frame, text="🔍 FILTER:", 
-              bg=CyberTheme.BG_CARD, 
-              fg=CyberTheme.TEXT_SECONDARY,
-              font=("Consolas", 9)).pack(side=LEFT, padx=(0, 5))
-        
-        self.live_search_var = StringVar()
-        self.live_search_var.trace("w", lambda *args: self.filter_live_tree())
-        search_entry = Entry(search_frame, 
-                            textvariable=self.live_search_var,
-                            width=30,
-                            bg=CyberTheme.BG_PANEL,
-                            fg=CyberTheme.TEXT_PRIMARY,
-                            insertbackground=CyberTheme.ACCENT_CYAN,
-                            font=("Consolas", 9),
-                            bd=0,
-                            relief=FLAT)
-        search_entry.pack(side=LEFT, padx=5, ipady=3)
-        
         self.lbl_dyn_status = Label(live_frame, 
                                     text="● STANDBY", 
                                     font=("Consolas", 10, "bold"), 
@@ -823,28 +687,6 @@ class MalwareDetectorUI:
         csv_frame = Frame(self.tab_csv, bg=CyberTheme.BG_CARD)
         csv_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
         
-        # Search/Filter Bar
-        csv_search_frame = Frame(csv_frame, bg=CyberTheme.BG_CARD)
-        csv_search_frame.pack(fill=X, pady=(0, 10))
-        
-        Label(csv_search_frame, text="🔍 FILTER:", 
-              bg=CyberTheme.BG_CARD, 
-              fg=CyberTheme.TEXT_SECONDARY,
-              font=("Consolas", 9)).pack(side=LEFT, padx=(0, 5))
-        
-        self.csv_search_var = StringVar()
-        self.csv_search_var.trace("w", lambda *args: self.filter_csv_tree())
-        csv_search_entry = Entry(csv_search_frame, 
-                                textvariable=self.csv_search_var,
-                                width=30,
-                                bg=CyberTheme.BG_PANEL,
-                                fg=CyberTheme.TEXT_PRIMARY,
-                                insertbackground=CyberTheme.ACCENT_CYAN,
-                                font=("Consolas", 9),
-                                bd=0,
-                                relief=FLAT)
-        csv_search_entry.pack(side=LEFT, padx=5, ipady=3)
-        
         self.lbl_csv_info = Label(csv_frame, 
                                   text="Awaiting system activation...", 
                                   font=("Consolas", 10), 
@@ -860,7 +702,7 @@ class MalwareDetectorUI:
                                      style="Cyber.Treeview")
         
         self.tree_csv.heading("pid", text="PID")
-        self.tree_csv.heading("name", text="MALWARE FAMILY")
+        self.tree_csv.heading("name", text="TARGET RESOURCE")
         self.tree_csv.heading("risk", text="RISK SCORE")
         self.tree_csv.heading("status", text="STATUS")
         
@@ -883,12 +725,8 @@ class MalwareDetectorUI:
         self.tree_csv.tag_configure("safe", 
                                     background=CyberTheme.BG_CARD)
         
-        # Right-click context menu
-        self.csv_context_menu = Menu(self.root, tearoff=0, bg=CyberTheme.BG_PANEL, fg=CyberTheme.TEXT_PRIMARY)
-        self.csv_context_menu.add_command(label="Kill Process", command=self.kill_selected_process_csv)
-        self.tree_csv.bind("<Button-3>", self.show_csv_context_menu)
-        
         return page 
+    
     
     # ==================== NETWORK PAGE ====================
     def create_network_page(self):
@@ -942,28 +780,6 @@ class MalwareDetectorUI:
         live_frame = Frame(self.tab_net_live, bg=CyberTheme.BG_CARD)
         live_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
         
-        # Search/Filter Bar
-        net_live_search_frame = Frame(live_frame, bg=CyberTheme.BG_CARD)
-        net_live_search_frame.pack(fill=X, pady=(0, 10))
-        
-        Label(net_live_search_frame, text="🔍 FILTER:", 
-              bg=CyberTheme.BG_CARD, 
-              fg=CyberTheme.TEXT_SECONDARY,
-              font=("Consolas", 9)).pack(side=LEFT, padx=(0, 5))
-        
-        self.net_live_search_var = StringVar()
-        self.net_live_search_var.trace("w", lambda *args: self.filter_net_live_tree())
-        net_live_search_entry = Entry(net_live_search_frame, 
-                                     textvariable=self.net_live_search_var,
-                                     width=30,
-                                     bg=CyberTheme.BG_PANEL,
-                                     fg=CyberTheme.TEXT_PRIMARY,
-                                     insertbackground=CyberTheme.ACCENT_CYAN,
-                                     font=("Consolas", 9),
-                                     bd=0,
-                                     relief=FLAT)
-        net_live_search_entry.pack(side=LEFT, padx=5, ipady=3)
-        
         cols_live = ("time", "local", "remote", "status", "pid")
         self.tree_net_live = ttk.Treeview(live_frame, 
                                           columns=cols_live, 
@@ -993,28 +809,6 @@ class MalwareDetectorUI:
         # Tab 2: Threat Detection
         sim_frame = Frame(self.tab_net_sim, bg=CyberTheme.BG_CARD)
         sim_frame.pack(fill=BOTH, expand=True, padx=15, pady=15)
-        
-        # Search/Filter Bar
-        net_sim_search_frame = Frame(sim_frame, bg=CyberTheme.BG_CARD)
-        net_sim_search_frame.pack(fill=X, pady=(0, 10))
-        
-        Label(net_sim_search_frame, text="🔍 FILTER:", 
-              bg=CyberTheme.BG_CARD, 
-              fg=CyberTheme.TEXT_SECONDARY,
-              font=("Consolas", 9)).pack(side=LEFT, padx=(0, 5))
-        
-        self.net_sim_search_var = StringVar()
-        self.net_sim_search_var.trace("w", lambda *args: self.filter_net_sim_tree())
-        net_sim_search_entry = Entry(net_sim_search_frame, 
-                                    textvariable=self.net_sim_search_var,
-                                    width=30,
-                                    bg=CyberTheme.BG_PANEL,
-                                    fg=CyberTheme.TEXT_PRIMARY,
-                                    insertbackground=CyberTheme.ACCENT_CYAN,
-                                    font=("Consolas", 9),
-                                    bd=0,
-                                    relief=FLAT)
-        net_sim_search_entry.pack(side=LEFT, padx=5, ipady=3)
         
         cols_sim = ("time", "process", "remote", "risk", "status")
         self.tree_net_sim = ttk.Treeview(sim_frame, 
@@ -1048,11 +842,6 @@ class MalwareDetectorUI:
         self.tree_net_sim.tag_configure("safe", 
                                         background=CyberTheme.BG_CARD)
         
-        # Right-click context menu
-        self.net_sim_context_menu = Menu(self.root, tearoff=0, bg=CyberTheme.BG_PANEL, fg=CyberTheme.TEXT_PRIMARY)
-        self.net_sim_context_menu.add_command(label="Kill Process", command=self.kill_selected_process_net_sim)
-        self.tree_net_sim.bind("<Button-3>", self.show_net_sim_context_menu)
-        
         return page
     
     # ==================== ALERTS PAGE ====================
@@ -1083,6 +872,10 @@ class MalwareDetectorUI:
         self.create_action_button(controls, "🔄 REFRESH", 
                                  self.update_alert_visualization, 
                                  CyberTheme.ACCENT_GREEN).pack(side=LEFT, padx=5)
+        
+        self.create_action_button(controls, "DISINFECT", 
+                                 self.disinfect_system, 
+                                 CyberTheme.ACCENT_RED).pack(side=LEFT, padx=5)
         
         # Tabs
         self.alert_tabs = ttk.Notebook(page, style="Cyber.TNotebook")
@@ -1139,6 +932,54 @@ class MalwareDetectorUI:
         
         return page
     
+
+    # ====================Disinfect System====================
+    def disinfect_system(self):
+        """Kill the host_agent.py process, stop the CSV simulation stream, and delete the file"""
+        import psutil
+        import os 
+        
+        # 1. Stop the CSV Simulation & Monitoring
+        if self.monitoring_active:
+            self.stop_monitoring()
+            self.log_message("[DISINFECT] CSV data stream halted.")
+        
+        # 2. Hunt down and terminate host_agent.py
+        agent_killed = False
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmdline = proc.info['cmdline']
+                # Check if it's a python process and running host_agent.py
+                if cmdline and any('host_agent.py' in cmd for cmd in cmdline):
+                    proc.kill() # Force kill the malware agent
+                    agent_killed = True
+                    self.log_message(f"[DISINFECT] Neutralized host_agent.py (PID: {proc.info['pid']})")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+
+        # 3. Delete the malicious data stream file (CSV)
+        file_deleted = False
+        try:
+            if os.path.exists(SIM_FILE_PATH):
+                os.remove(SIM_FILE_PATH)
+                self.log_message("[DISINFECT] Threat payload successfully deleted from disk.")
+                file_deleted = True
+        except Exception as e:
+            self.log_message(f"[DISINFECT ERROR] Could not delete data file: {e}")
+        
+        # 4. Provide Dynamic UI Feedback
+        feedback_msg = "Data Exfiltration stopped."
+        if agent_killed:
+            feedback_msg += "\n✓ SCAN COMPLETED."
+        if file_deleted:
+            feedback_msg += "\n✓ Malicious payload file permanently deleted."
+            
+        if agent_killed or file_deleted:
+            self.show_info_dialog("System Disinfected", f"Threat neutralized.\n\n{feedback_msg}")
+            self.clear_alerts() # Clear the alerts board after disinfecting
+        else:
+            self.show_info_dialog("Disinfect Status", "Data stream stopped.\n\nNo active threats or payload files were found on the system.")
+
     # ==================== SETTINGS PAGE ====================
     def create_settings_page(self):
         """System configuration and ML training"""
@@ -1177,6 +1018,61 @@ class MalwareDetectorUI:
         status_text.insert("1.0", "\n".join(status_lines))
         status_text.config(state=DISABLED)
         
+        # Detection Mode Panel
+        mode_panel = self.create_panel(content, "◇ DETECTION MODE")
+        mode_panel.pack(fill=X, pady=(0, 15))
+        
+        mode_frame = Frame(mode_panel, bg=CyberTheme.BG_CARD)
+        mode_frame.pack(fill=X, padx=15, pady=15)
+        
+        # Mode description
+        mode_desc = Label(mode_frame, 
+                         text="Choose detection mode:",
+                         bg=CyberTheme.BG_CARD,
+                         fg=CyberTheme.TEXT_SECONDARY,
+                         font=("Consolas", 10))
+        mode_desc.pack(anchor=W, pady=(0, 10))
+        
+        # Mode toggle frame
+        toggle_frame = Frame(mode_frame, bg=CyberTheme.BG_CARD)
+        toggle_frame.pack(fill=X, pady=(0, 10))
+        
+        # Hybrid mode option
+        self.hybrid_radio = Radiobutton(toggle_frame,
+                                       text="Refresh Datapipeline",
+                                       variable=self.detection_mode,
+                                       value="hybrid",
+                                       bg=CyberTheme.BG_CARD,
+                                       fg=CyberTheme.TEXT_PRIMARY,
+                                       selectcolor=CyberTheme.BG_PANEL,
+                                       activebackground=CyberTheme.BG_CARD,
+                                       activeforeground=CyberTheme.ACCENT_CYAN,
+                                       font=("Consolas", 10),
+                                       command=self.update_detection_mode)
+        self.hybrid_radio.pack(anchor=W, pady=2)
+        
+        # Real-time mode option
+        self.realtime_radio = Radiobutton(toggle_frame,
+                                         text="Refresh Only (Real-Time System Stats)",
+                                         variable=self.detection_mode,
+                                         value="realtime",
+                                         bg=CyberTheme.BG_CARD,
+                                         fg=CyberTheme.TEXT_PRIMARY,
+                                         selectcolor=CyberTheme.BG_PANEL,
+                                         activebackground=CyberTheme.BG_CARD,
+                                         activeforeground=CyberTheme.ACCENT_CYAN,
+                                         font=("Consolas", 10),
+                                         command=self.update_detection_mode)
+        self.realtime_radio.pack(anchor=W, pady=2)
+        
+        # Mode status indicator
+        self.mode_status_label = Label(mode_frame,
+                                      text="Current Mode: Hybrid ",
+                                      bg=CyberTheme.BG_CARD,
+                                      fg=CyberTheme.ACCENT_PURPLE,
+                                      font=("Consolas", 9, "bold"))
+        self.mode_status_label.pack(anchor=W, pady=(10, 0))
+        
         # Training Panel
         train_panel = self.create_panel(content, "⬢ MODEL TRAINING")
         train_panel.pack(fill=X, pady=(0, 15))
@@ -1212,9 +1108,21 @@ class MalwareDetectorUI:
         
         return page
     
+    def update_detection_mode(self):
+        """Update detection mode based on user selection"""
+        mode = self.detection_mode.get()
+        if mode == "hybrid":
+            self.mode_status_label.config(text="Current Mode: Hybrid ", 
+                                        fg=CyberTheme.ACCENT_PURPLE)
+            self.log_message(f"[MODE] Switched to Hybrid Detection Mode")
+        else:  # realtime
+            self.mode_status_label.config(text="Current Mode:  SAFE Real-Time ", 
+                                        fg=CyberTheme.ACCENT_GREEN)
+            self.log_message(f"[MODE] Switched to Real-Time Detection Mode")
+    
     # ==================== MONITORING CONTROL ====================
     def start_smart_monitoring(self):
-        """Start real-time monitoring with optional simulation"""
+        """Start monitoring based on selected detection mode"""
         self.backend.start_monitoring()
         self.monitoring_active = True
         
@@ -1224,13 +1132,18 @@ class MalwareDetectorUI:
         self.status_indicator.config(fg=CyberTheme.ACCENT_GREEN)
         self.status_text.config(text="ONLINE", fg=CyberTheme.ACCENT_GREEN)
         
-        # Check for CSV simulation
-        if os.path.exists(SIM_FILE_PATH):
-            self.status_label.config(text="Status: Hybrid Mode (Live + Capture)", 
+        # Start monitoring based on detection mode
+        mode = self.detection_mode.get()
+        if mode == "hybrid" and os.path.exists(SIM_FILE_PATH):
+            self.status_label.config(text="Status: SCAN MODE (DATA)", 
                                     fg=CyberTheme.ACCENT_PURPLE)
-            self.log_message(f"[HYBRID] Found Capture. Starting Packet-Data Stream injection...")
+            self.log_message(f"[HYBRID] Starting Hybrid Detection...")
             self.run_simulation_thread(SIM_FILE_PATH)
-        else:
+        elif mode == "hybrid" and not os.path.exists(SIM_FILE_PATH):
+            self.status_label.config(text="Status: SCAN MODE", 
+                                    fg=CyberTheme.ACCENT_YELLOW)
+            self.log_message(f"[HYBRID] Data file not found. Running Live monitoring only.")
+        else:  # realtime mode
             self.status_label.config(text="Status: Real-Time Monitoring", 
                                     fg=CyberTheme.ACCENT_GREEN)
             self.log_message("[LIVE] Real-time hardware monitoring active.")
@@ -1262,22 +1175,6 @@ class MalwareDetectorUI:
                 self.status_indicator.config(fg=self.lighten_color(CyberTheme.ACCENT_GREEN))
         
         self.root.after(500, self.animate_status_indicator)
-    
-    def bind_keyboard_shortcuts(self):
-        """Bind keyboard shortcuts"""
-        self.root.bind('<Control-s>', lambda e: self.start_smart_monitoring())
-        self.root.bind('<Escape>', lambda e: self.stop_monitoring())
-        self.root.focus_set()  # Ensure root can receive keyboard events
-    
-    def update_alert_badge(self):
-        """Update alert notification badge"""
-        if hasattr(self, 'alert_badge'):
-            alert_count = len(self.backend.alerts)
-            if alert_count > 0:
-                self.alert_badge.config(text=str(alert_count))
-                self.alert_badge.pack(side=RIGHT, padx=(0, 5))
-            else:
-                self.alert_badge.pack_forget()
     
     # ==================== UI UPDATE LOOP ====================
     def schedule_updates(self):
@@ -1338,65 +1235,8 @@ class MalwareDetectorUI:
                         alert.get('label', ''), 
                         f"{alert.get('confidence', 0):.2f}"
                     ))
-            
-            # 4. Update Threat Score Gauge
-            self.update_threat_gauge(ensemble_score)
         except Exception as e:
             print(f"[DASH UPDATE ERROR] {e}")
-    
-    def update_threat_gauge(self, score):
-        """Update the threat score gauge"""
-        if not hasattr(self, 'gauge_ax') or not hasattr(self, 'gauge_canvas'):
-            return
-        
-        try:
-            self.gauge_ax.clear()
-            self.gauge_ax.set_facecolor(CyberTheme.BG_CARD)
-            self.gauge_ax.axis('off')
-            
-            # Create gauge
-            center = (0.5, 0.4)
-            radius = 0.3
-            
-            # Background circle
-            circle = plt.Circle(center, radius, color=CyberTheme.BG_PANEL, fill=True)
-            self.gauge_ax.add_patch(circle)
-            
-            # Score arc
-            theta = score * 180  # 0-180 degrees
-            arc = matplotlib.patches.Arc(center, radius*2, radius*2, 
-                                        theta1=0, theta2=theta, 
-                                        color=self.get_score_color(score), 
-                                        linewidth=8, capstyle='round')
-            self.gauge_ax.add_patch(arc)
-            
-            # Center text
-            self.gauge_ax.text(center[0], center[1], f"{score:.2f}", 
-                              ha='center', va='center', 
-                              fontsize=24, fontweight='bold',
-                              color=self.get_score_color(score),
-                              family='Consolas')
-            
-            # Label
-            self.gauge_ax.text(center[0], center[1]-0.15, "THREAT SCORE", 
-                              ha='center', va='center', 
-                              fontsize=10, 
-                              color=CyberTheme.TEXT_SECONDARY,
-                              family='Consolas')
-            
-            self.gauge_canvas.draw()
-            
-        except Exception as e:
-            print(f"[GAUGE UPDATE ERROR] {e}")
-    
-    def get_score_color(self, score):
-        """Get color based on threat score"""
-        if score < 0.3:
-            return CyberTheme.STATUS_SAFE
-        elif score < 0.7:
-            return CyberTheme.STATUS_WARNING
-        else:
-            return CyberTheme.STATUS_DANGER
     
     def update_dynamic_view(self):
         """Update dynamic layer tables with Real-Time Stats"""
@@ -1502,9 +1342,6 @@ class MalwareDetectorUI:
         
         # Update visualization
         self.update_alert_visualization()
-        
-        # Update alert badge
-        self.update_alert_badge()
     
     def update_alert_visualization(self):
         """Update attack correlation graph"""
@@ -1622,7 +1459,7 @@ class MalwareDetectorUI:
                 
                 self.lbl_csv_info.config(
                     #text=f"● STREAMING: {os.path.basename(file_path)}", 
-                    text=f"● STREAMING: Any.Run Capture",
+                    text=f"● STREAMING: PARSER Capture",
                     fg=CyberTheme.ACCENT_PURPLE
                 )
                 
@@ -1816,138 +1653,6 @@ class MalwareDetectorUI:
     def show_error_dialog(self, title, message):
         """Show error dialog"""
         messagebox.showerror(title, message)
-    
-    # ==================== FILTER METHODS ====================
-    def filter_live_tree(self):
-        """Filter live process tree based on search"""
-        search_term = self.live_search_var.get().lower()
-        if not hasattr(self, 'tree_live') or not search_term:
-            return
-        
-        for item in self.tree_live.get_children():
-            values = self.tree_live.item(item, 'values')
-            if values:
-                name = str(values[2]).lower()  # process name
-                pid = str(values[1]).lower()   # pid
-                if search_term in name or search_term in pid:
-                    self.tree_live.item(item, tags=())
-                else:
-                    self.tree_live.item(item, tags=('hidden',))
-        
-        self.tree_live.tag_configure('hidden', foreground=CyberTheme.BG_CARD)
-    
-    def filter_csv_tree(self):
-        """Filter CSV threat analysis tree"""
-        search_term = self.csv_search_var.get().lower()
-        if not hasattr(self, 'tree_csv') or not search_term:
-            return
-        
-        for item in self.tree_csv.get_children():
-            values = self.tree_csv.item(item, 'values')
-            if values:
-                name = str(values[1]).lower()  # malware family
-                pid = str(values[0]).lower()   # pid
-                if search_term in name or search_term in pid:
-                    self.tree_csv.item(item, tags=())
-                else:
-                    self.tree_csv.item(item, tags=('hidden',))
-        
-        self.tree_csv.tag_configure('hidden', foreground=CyberTheme.BG_CARD)
-    
-    def filter_net_live_tree(self):
-        """Filter network live traffic tree"""
-        search_term = self.net_live_search_var.get().lower()
-        if not hasattr(self, 'tree_net_live') or not search_term:
-            return
-        
-        for item in self.tree_net_live.get_children():
-            values = self.tree_net_live.item(item, 'values')
-            if values:
-                local = str(values[1]).lower()   # local address
-                remote = str(values[2]).lower()  # remote address
-                pid = str(values[4]).lower()     # pid
-                if search_term in local or search_term in remote or search_term in pid:
-                    self.tree_net_live.item(item, tags=())
-                else:
-                    self.tree_net_live.item(item, tags=('hidden',))
-        
-        self.tree_net_live.tag_configure('hidden', foreground=CyberTheme.BG_CARD)
-    
-    def filter_net_sim_tree(self):
-        """Filter network threat detection tree"""
-        search_term = self.net_sim_search_var.get().lower()
-        if not hasattr(self, 'tree_net_sim') or not search_term:
-            return
-        
-        for item in self.tree_net_sim.get_children():
-            values = self.tree_net_sim.item(item, 'values')
-            if values:
-                process = str(values[1]).lower()  # process
-                remote = str(values[2]).lower()   # remote
-                if search_term in process or search_term in remote:
-                    self.tree_net_sim.item(item, tags=())
-                else:
-                    self.tree_net_sim.item(item, tags=('hidden',))
-        
-        self.tree_net_sim.tag_configure('hidden', foreground=CyberTheme.BG_CARD)
-    
-    # ==================== CONTEXT MENU METHODS ====================
-    def show_csv_context_menu(self, event):
-        """Show context menu for CSV tree"""
-        item = self.tree_csv.identify_row(event.y)
-        if item:
-            self.tree_csv.selection_set(item)
-            self.csv_context_menu.post(event.x_root, event.y_root)
-    
-    def show_net_sim_context_menu(self, event):
-        """Show context menu for network sim tree"""
-        item = self.tree_net_sim.identify_row(event.y)
-        if item:
-            self.tree_net_sim.selection_set(item)
-            self.net_sim_context_menu.post(event.x_root, event.y_root)
-    
-    def kill_selected_process_csv(self):
-        """Kill process from CSV threat table"""
-        selection = self.tree_csv.selection()
-        if not selection:
-            return
-        
-        item = selection[0]
-        values = self.tree_csv.item(item, 'values')
-        if values:
-            pid = values[0]
-            name = values[1]
-            if messagebox.askyesno("Kill Process", f"Kill process '{name}' (PID: {pid})?"):
-                self.kill_process(pid, name)
-    
-    def kill_selected_process_net_sim(self):
-        """Kill process from network threat table"""
-        selection = self.tree_net_sim.selection()
-        if not selection:
-            return
-        
-        item = selection[0]
-        values = self.tree_net_sim.item(item, 'values')
-        if values:
-            process = values[1]
-            if messagebox.askyesno("Kill Process", f"Kill process '{process}'?"):
-                # For network table, we might not have PID, so we'll need to find it
-                self.log_message(f"[KILL] Attempted to kill process: {process}")
-                messagebox.showinfo("Kill Process", f"Kill command sent for process: {process}")
-    
-    def kill_process(self, pid, name):
-        """Kill a process by PID"""
-        try:
-            import subprocess
-            if os.name == 'nt':  # Windows
-                subprocess.run(['taskkill', '/PID', str(pid), '/F'], check=True)
-            else:  # Unix-like
-                subprocess.run(['kill', '-9', str(pid)], check=True)
-            self.log_message(f"[KILL] Successfully killed process {name} (PID: {pid})")
-            messagebox.showinfo("Success", f"Process {name} (PID: {pid}) has been terminated.")
-        except subprocess.CalledProcessError as e:
-            self.log_message(f"[KILL ERROR] Failed to kill process {name} (PID: {pid}): {e}")
-            messagebox.showerror("Error", f"Failed to kill process {name} (PID: {pid}).")
 
 # ==================== MAIN ====================
 def main():

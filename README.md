@@ -1,6 +1,6 @@
 # 🛡️ STRIKE - Stealth Threat Recognition, Isolation, & Killing Engine
 
-**AEGIS** is a professional-grade, multi-layer malware detection system designed to identify threats through **Static Analysis**, **Dynamic Behavioral Monitoring**, and **Network Traffic Forensics**.
+**STRIKE** is a professional-grade, multi-layer malware detection system designed to identify threats through **Static Analysis**, **Dynamic Behavioral Monitoring**, and **Network Traffic Forensics**.
 
 Built with a specialized **Cybersecurity Theme** GUI, it combines real-time hardware monitoring with advanced Machine Learning models to provide a comprehensive security posture.
 
